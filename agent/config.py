@@ -20,6 +20,13 @@ _REQUIRED: dict[str, str] = {
     "llm_model": "LLM_MODEL",
 }
 
+_OPTIONAL_STRINGS: dict[str, str] = {
+    "candidate_name": "CANDIDATE_NAME",
+    "verify_model": "VERIFY_MODEL",
+    "llm_provider": "LLM_PROVIDER",
+    "llm_seed": "LLM_SEED",
+}
+
 _OPTIONAL_FLOATS: dict[str, str] = {
     "llm_price_per_million_input": "LLM_PRICE_PER_MILLION_INPUT",
     "llm_price_per_million_output": "LLM_PRICE_PER_MILLION_OUTPUT",
@@ -43,6 +50,10 @@ class Settings(BaseModel):
     llm_model: str
     # The reply checker. Empty means "same as llm_model"; a different model gives a second opinion.
     verify_model: str = ""
+    # OpenRouter provider slug (e.g. "deepinfra/fp8"). Empty lets OpenRouter route freely.
+    llm_provider: str = ""
+    # Fixed sampling seed, so repeated runs vary as little as the provider allows.
+    llm_seed: int | None = 42
     llm_price_per_million_input: float = Field(default=0.0, ge=0)
     llm_price_per_million_output: float = Field(default=0.0, ge=0)
     reply_confidence_min: float = Field(default=0.75, ge=0, le=1)
@@ -66,12 +77,10 @@ def load_settings(env_file: Path | None = None) -> Settings:
     data: dict[str, str] = {
         field: os.environ[env_name].strip() for field, env_name in _REQUIRED.items()
     }
-    name = os.environ.get("CANDIDATE_NAME", "").strip()
-    if name:
-        data["candidate_name"] = name
-    verify_model = os.environ.get("VERIFY_MODEL", "").strip()
-    if verify_model:
-        data["verify_model"] = verify_model
+    for field, env_name in _OPTIONAL_STRINGS.items():
+        raw = os.environ.get(env_name, "").strip()
+        if raw:
+            data[field] = raw
     for field, env_name in _OPTIONAL_FLOATS.items():
         raw = os.environ.get(env_name, "").strip()
         if raw:

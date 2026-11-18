@@ -93,6 +93,7 @@ class LlmClient:
                 messages=messages,
                 temperature=0,
                 response_format={"type": "json_object"},
+                **self._routing(model),
             )
         except OpenAIError as exc:
             raise LlmError(f"LLM call failed: {type(exc).__name__}") from exc
@@ -100,6 +101,18 @@ class LlmClient:
         usage = self._usage(response)
         self.total += usage
         return text, usage
+
+    def _routing(self, model: str) -> dict[str, Any]:
+        """Seed always; provider pin only for the main model (a different VERIFY_MODEL may
+        not be served by that provider)."""
+        extra: dict[str, Any] = {}
+        if self._settings.llm_seed is not None:
+            extra["seed"] = self._settings.llm_seed
+        if self._settings.llm_provider and model == self._settings.llm_model:
+            extra["extra_body"] = {
+                "provider": {"order": [self._settings.llm_provider], "allow_fallbacks": False}
+            }
+        return extra
 
     def _usage(self, response: Any) -> Usage:
         raw = getattr(response, "usage", None)

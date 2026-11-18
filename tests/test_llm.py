@@ -84,3 +84,29 @@ def test_invalid_twice_raises_with_usage() -> None:
 
     assert len(fake.requests) == 2
     assert caught.value.usage.tokens_in == 2000
+
+
+def test_seed_and_provider_pin_are_sent() -> None:
+    settings = SETTINGS.model_copy(update={"llm_provider": "deepinfra/fp8", "llm_seed": 7})
+    fake = FakeOpenAI(['{"value": 1}', '{"value": 2}'])
+    llm = LlmClient(settings, client=fake)
+
+    llm.complete_json("s", "u", Answer)
+    llm.complete_json("s", "u", Answer, model="other-model")
+
+    main, other = fake.requests
+    assert main["seed"] == 7
+    assert main["extra_body"] == {
+        "provider": {"order": ["deepinfra/fp8"], "allow_fallbacks": False}
+    }
+    # A different (verifier) model is not forced onto the drafter's provider.
+    assert other["seed"] == 7
+    assert "extra_body" not in other
+
+
+def test_no_provider_means_no_extra_body() -> None:
+    fake = FakeOpenAI(['{"value": 1}'])
+    LlmClient(SETTINGS, client=fake).complete_json("s", "u", Answer)
+
+    assert "extra_body" not in fake.requests[0]
+    assert fake.requests[0]["seed"] == 42  # default seed
