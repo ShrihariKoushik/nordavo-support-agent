@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-from pydantic import BaseModel, Field, SecretStr, ValidationError
+from pydantic import BaseModel, Field, SecretStr, ValidationError, model_validator
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -41,9 +41,17 @@ class Settings(BaseModel):
     llm_base_url: str
     llm_api_key: SecretStr = Field(repr=False)
     llm_model: str
+    # The reply checker. Empty means "same as llm_model"; a different model gives a second opinion.
+    verify_model: str = ""
     llm_price_per_million_input: float = Field(default=0.0, ge=0)
     llm_price_per_million_output: float = Field(default=0.0, ge=0)
     reply_confidence_min: float = Field(default=0.75, ge=0, le=1)
+
+    @model_validator(mode="after")
+    def _verify_model_defaults_to_llm_model(self) -> "Settings":
+        if not self.verify_model.strip():
+            self.verify_model = self.llm_model
+        return self
 
 
 def load_settings(env_file: Path | None = None) -> Settings:
@@ -61,6 +69,9 @@ def load_settings(env_file: Path | None = None) -> Settings:
     name = os.environ.get("CANDIDATE_NAME", "").strip()
     if name:
         data["candidate_name"] = name
+    verify_model = os.environ.get("VERIFY_MODEL", "").strip()
+    if verify_model:
+        data["verify_model"] = verify_model
     for field, env_name in _OPTIONAL_FLOATS.items():
         raw = os.environ.get(env_name, "").strip()
         if raw:

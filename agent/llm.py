@@ -40,7 +40,9 @@ class LlmInvalidOutput(Exception):
 
 
 class JsonLlm(Protocol):
-    def complete_json(self, system: str, user: str, schema: type[T]) -> tuple[T, Usage]: ...
+    def complete_json(
+        self, system: str, user: str, schema: type[T], *, model: str | None = None
+    ) -> tuple[T, Usage]: ...
 
 
 class LlmClient:
@@ -54,8 +56,13 @@ class LlmClient:
         )
         self.total = Usage()
 
-    def complete_json(self, system: str, user: str, schema: type[T]) -> tuple[T, Usage]:
-        """Ask for one JSON object matching `schema`. Retry once with the error, then give up."""
+    def complete_json(
+        self, system: str, user: str, schema: type[T], *, model: str | None = None
+    ) -> tuple[T, Usage]:
+        """Ask for one JSON object matching `schema`. Retry once with the error, then give up.
+
+        `model` overrides `settings.llm_model` for this call (the verifier uses this).
+        """
         messages: list[dict[str, str]] = [
             {"role": "system", "content": system},
             {"role": "user", "content": user},
@@ -63,7 +70,7 @@ class LlmClient:
         usage = Usage()
         problem = ""
         for _attempt in range(2):
-            text, call_usage = self._chat(messages)
+            text, call_usage = self._chat(messages, model or self._settings.llm_model)
             usage += call_usage
             try:
                 return schema.model_validate(json.loads(_strip_fences(text))), usage
@@ -79,10 +86,10 @@ class LlmClient:
                 ]
         raise LlmInvalidOutput(f"Model output invalid twice: {problem}", usage)
 
-    def _chat(self, messages: list[dict[str, str]]) -> tuple[str, Usage]:
+    def _chat(self, messages: list[dict[str, str]], model: str) -> tuple[str, Usage]:
         try:
             response = self._client.chat.completions.create(
-                model=self._settings.llm_model,
+                model=model,
                 messages=messages,
                 temperature=0,
                 response_format={"type": "json_object"},

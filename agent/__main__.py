@@ -115,7 +115,19 @@ def _log_entry(
     if result is None:
         return TicketLog(ticket_id=ticket_id, outcome=outcome, error=error, latency_ms=latency_ms)
     decision = result.decision
+    verifier = result.verifier
+    verifier_fields: dict[str, object] = {}
+    if verifier is not None:
+        verifier_fields = {
+            "verifier_verdict": "pass" if verifier.passed else "fail",
+            "verifier_claims": verifier.claims,
+            "verifier_unsupported": verifier.unsupported,
+            "verifier_failures": verifier.failures,
+            "language_issues": verifier.language_issues,
+            "back_translation": verifier.back_translation,
+        }
     return TicketLog(
+        **verifier_fields,
         ticket_id=ticket_id,
         outcome=outcome,
         language=decision.language.value,
@@ -145,6 +157,19 @@ def _print_preview(result: DecisionResult) -> None:
     print(f"    reason: {decision.reason}")
     if result.policy_notes:
         print(f"    policy: {'; '.join(result.policy_notes)}")
+    verifier = result.verifier
+    if verifier is not None:
+        verdict = "pass" if verifier.passed else "fail"
+        print(
+            f"    verifier: {verdict}, claims={verifier.claims}, unsupported={verifier.unsupported}"
+        )
+        for failure in verifier.failures:
+            print(f"      fail: {failure}")
+        for issue in verifier.language_issues:
+            print(f"      language issue: {issue}")
+        if verifier.back_translation:
+            back = redact_payment_details(verifier.back_translation).replace("\n", "\n      ")
+            print(f"    back_translation:\n      {back}")
     text = decision.draft_reply or decision.handoff_note
     if text:
         label = "draft_reply" if decision.draft_reply else "handoff_note"

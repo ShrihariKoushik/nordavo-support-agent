@@ -1,4 +1,4 @@
-"""One ticket in, one decision out: rules -> LLM -> policy in code -> Decision.
+"""One ticket in, one decision out: rules -> LLM -> policy in code -> verify replies -> Decision.
 
 The model proposes; this module decides. Every time code overrides the model, the
 reason is added to `policy_notes` so the log and the eval can show it.
@@ -14,6 +14,7 @@ from agent.llm import JsonLlm, LlmInvalidOutput, Usage
 from agent.models import Action, Category, Decision, Language, Priority, Ticket
 from agent.prompts import LlmDecision, decide_system, decide_user
 from agent.rules import forced_handoff_hits, guess_language, is_empty, redact_payment_details
+from agent.verify import VerifyOutcome, verify_reply
 
 
 class DecisionResult(BaseModel):
@@ -21,6 +22,7 @@ class DecisionResult(BaseModel):
     faq_ids: list[str] = Field(default_factory=list)
     rule_hits: list[str] = Field(default_factory=list)
     policy_notes: list[str] = Field(default_factory=list)
+    verifier: VerifyOutcome | None = None  # None when the decision was not a reply
     tokens_in: int = 0
     tokens_out: int = 0
     cost_usd: float = 0.0
@@ -76,11 +78,33 @@ def _decide(ticket: Ticket, *, faq: Faq, llm: JsonLlm, settings: Settings) -> De
         handoff_note=redact_payment_details(handoff_note) if action is Action.handoff else None,
         confidence=proposal.confidence,
     )
+
+    # e) Only replies reach a customer, so only replies are checked.
+    verified: VerifyOutcome | None = None
+    if decision.action is Action.reply:
+        cited = [entry for entry in faq.entries if entry.id in proposal.faq_ids]
+        verified = verify_reply(ticket, decision, cited, llm=llm, settings=settings)
+        usage += verified.usage
+        if not verified.passed:
+            failed = "Draft failed verification: " + "; ".join(verified.failures) + "."
+            notes.append("reply failed verification, handed off")
+            decision = decision.model_copy(
+                update={
+                    "action": Action.handoff,
+                    "draft_reply": None,
+                    "handoff_note": redact_payment_details(f"{failed} {proposal.handoff_note}"),
+                    "reason": redact_payment_details(
+                        f"{proposal.reason} Policy: reply failed verification, handed off."
+                    ),
+                }
+            )
+
     return DecisionResult(
         decision=decision,
         faq_ids=proposal.faq_ids,
         rule_hits=rule_names,
         policy_notes=notes,
+        verifier=verified,
         tokens_in=usage.tokens_in,
         tokens_out=usage.tokens_out,
         cost_usd=usage.cost_usd,

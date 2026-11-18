@@ -12,6 +12,7 @@ _KEYS = [
     "LLM_BASE_URL",
     "LLM_API_KEY",
     "LLM_MODEL",
+    "VERIFY_MODEL",
     "LLM_PRICE_PER_MILLION_INPUT",
     "LLM_PRICE_PER_MILLION_OUTPUT",
     "REPLY_CONFIDENCE_MIN",
@@ -50,6 +51,7 @@ def test_load_settings_reads_env_file_and_defaults(tmp_path, monkeypatch: pytest
     assert settings.candidate_email == "dev@example.com"
     assert settings.candidate_name == "Ada"
     assert settings.llm_model == "test-model"
+    assert settings.verify_model == "test-model"  # defaults to LLM_MODEL
     assert settings.helpdesk_key.get_secret_value() == "nrd_test"
     assert settings.llm_price_per_million_input == 0.4
     assert settings.llm_price_per_million_output == 1.2
@@ -86,3 +88,24 @@ def test_bad_price_raises(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
 
     with pytest.raises(ConfigError, match="llm_price_per_million_input"):
         load_settings(env_file)
+
+
+def test_verify_model_can_differ(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _clear(monkeypatch)
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "\n".join(
+            [
+                "HELPDESK_URL=https://example.test/helpdesk",
+                "HELPDESK_KEY=k",
+                "CANDIDATE_EMAIL=dev@example.com",
+                "LLM_BASE_URL=https://llm.test/v1",
+                "LLM_API_KEY=k",
+                "LLM_MODEL=drafter",
+                "VERIFY_MODEL=checker",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    settings = load_settings(env_file)
+    assert (settings.llm_model, settings.verify_model) == ("drafter", "checker")
