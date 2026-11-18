@@ -6,6 +6,7 @@ Reads every open ticket from the Roosterly helpdesk and posts exactly one decisi
 ## How to run
 
 ```
+git clone https://github.com/ShrihariKoushik/nordavo-support-agent.git && cd nordavo-support-agent
 python -m venv .venv && .venv\Scripts\activate        # Windows; source .venv/bin/activate elsewhere
 pip install -r requirements.txt
 cp .env.example .env                                  # fill in HELPDESK_KEY, CANDIDATE_EMAIL, LLM_API_KEY
@@ -33,7 +34,7 @@ python -m pytest -q
    I don't read Dutch, so I work in Dutch directly and audit through the back-translation, which is
    logged with every reply. The ticket language is detected in code (`agent/lang.py`), not taken from the model.
 3. **Qwen 2.5 72B via OpenRouter**, pinned to one provider (`deepinfra/fp8`, no fallbacks) with a fixed
-   seed and temperature 0. About $0.11 per 100 tickets ($0.36 / $0.40 per 1M tokens in / out).
+   seed and temperature 0. About $0.12 per 100 tickets (calculation under Eval and fix).
 
 **AI tools.** I started in Cursor and switched to Claude Code when I hit the Cursor limit. Both read
 `AGENTS.md` and `.cursor/rules`. A second AI assistant reviewed each commit independently (tests, live
@@ -72,10 +73,17 @@ identical code and gave action 77% vs 80% and FAQ 61% vs 67%
 ([compare-final4-final4b](eval/results/compare-final4-final4b.md)). E02 alone has scored 0/3 to 2/3
 across runs with an identical prompt. Compare runs with that in mind.
 
-**Final run:** 30 tickets posted (8 reply, 20 handoff, 2 close), $0.035, 0 errors. The log is in
+**Final run:** 30 tickets posted (8 reply, 20 handoff, 2 close), 0 errors. The log is in
 [`logs/`](logs/). A second dry run found nothing open, and the journal skips all 30.
 
+**Cost per 100 tickets** (final run, Qwen 2.5 72B at $0.36 in / $0.40 out per 1M tokens):
+87,461 in × $0.36/1M = $0.0315; 9,294 out × $0.40/1M = $0.0037; total $0.0352 for 30 tickets,
+so $0.0352 / 30 × 100 ≈ **$0.12 per 100 tickets** (reply + verifier calls included). The whole
+assignment (every eval, dry run and the final run) cost $0.35 on OpenRouter, well under €1.
+
 ## What I would improve
+
+**Next step:** cut needless handoffs without loosening safety, measured with more repeats.
 
 - Fewer needless handoffs: E01 (old iOS, F12), the feature requests T004/T016/T020 (F10), and T015,
   where the checker is too strict.
@@ -85,3 +93,8 @@ across runs with an identical prompt. Compare runs with that in mind.
 - More labelled examples and more repeats, so a fix can be told apart from run-to-run variation.
 - An injection note that keeps the underlying reason: T007 was a refund and an injection, and the
   human only gets the injection note.
+
+**One thing I would change in the client's rules:** drop "most customers write in Dutch" and keep only
+"reply in the customer's language". That sentence pushed the model to label English tickets as Dutch
+(E01/E06, the fix above). In the brief, I would have `GET /tickets/{id}` return the stored decision, so
+a posted reply or note can be audited after the run.
