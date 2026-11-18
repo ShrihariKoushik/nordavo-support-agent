@@ -210,3 +210,16 @@ def test_dry_run_never_posts_or_writes_the_journal(tmp_path: Path) -> None:
     assert counts == {Outcome.dry_run: 2}
     assert fake.posts == []
     assert not (tmp_path / "journal.jsonl").exists()
+
+
+def test_only_restricts_the_run_to_given_ticket_ids(tmp_path: Path) -> None:
+    fake = FakeHelpdesk(["T1", "T2", "T3"])
+    run_log = RunLog(tmp_path / "logs")
+    with _client(fake) as client:
+        counts = run_tickets(
+            client, Journal(tmp_path / "journal.jsonl"), run_log, handoff_decide,
+            dry_run=True, only={"T2", "T3"},
+        )
+    assert dict(counts) == {Outcome.dry_run: 2}
+    logged = [json.loads(x)["ticket_id"] for x in run_log.path.read_text(encoding="utf-8").splitlines()]
+    assert logged == ["T2", "T3"]

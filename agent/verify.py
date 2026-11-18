@@ -13,7 +13,7 @@ from agent.faq import FaqEntry
 from agent.llm import JsonLlm, LlmInvalidOutput, Usage
 from agent.lang import detect_language
 from agent.models import Decision, Language, Ticket
-from agent.prompts import VERIFY_SYSTEM, VerifyResult, verify_user
+from agent.prompts import BACK_TRANSLATION_CORRECTION, VERIFY_SYSTEM, VerifyResult, verify_user
 
 
 class VerifyOutcome(BaseModel):
@@ -39,21 +39,32 @@ def verify_reply(
 ) -> VerifyOutcome:
     """`expected_language` is the ticket language detected by code, when it was confident."""
     draft = decision.draft_reply or ""
+    user = verify_user(ticket, draft, cited_faq_entries, expected_language)
+    usage = Usage()
     try:
-        result, usage = llm.complete_json(
-            VERIFY_SYSTEM,
-            verify_user(ticket, draft, cited_faq_entries, expected_language),
-            VerifyResult,
-            model=settings.verify_model,
+        result, call_usage = llm.complete_json(
+            VERIFY_SYSTEM, user, VerifyResult, model=settings.verify_model
         )
+        usage += call_usage
+        # The back-translation is our English audit trail. A copied draft is useless, so ask once more.
+        if not _is_english(result.back_translation):
+            result, call_usage = llm.complete_json(
+                VERIFY_SYSTEM,
+                f"{user}\n\n{BACK_TRANSLATION_CORRECTION}",
+                VerifyResult,
+                model=settings.verify_model,
+            )
+            usage += call_usage
     except LlmInvalidOutput as exc:
         # Fail safe: a reply nobody could check is not sent.
         return VerifyOutcome(
-            passed=False, failures=["verifier output invalid twice"], usage=exc.usage
+            passed=False, failures=["verifier output invalid twice"], usage=usage + exc.usage
         )
 
     cited_ids = {entry.id for entry in cited_faq_entries}
     failures = verification_failures(result, cited_ids)
+    if not _is_english(result.back_translation):
+        failures.append("back-translation not in English")
     # Code check on top of the checker: a clearly-detected draft language must match the ticket.
     draft_language = detect_language(draft)
     if expected_language and draft_language and draft_language[0] is not expected_language:
@@ -85,6 +96,12 @@ def verification_failures(result: VerifyResult, cited_ids: set[str]) -> list[str
     if not result.answers_the_question:
         failures.append("reply does not answer the customer's question")
     return failures
+
+
+def _is_english(text: str) -> bool:
+    """English, or too short to tell. Only a clear nl/de detection counts as not English."""
+    detected = detect_language(text)
+    return detected is None or detected[0] is Language.en
 
 
 def _grounded(supported: bool, faq_id: str | None, cited_ids: set[str]) -> bool:

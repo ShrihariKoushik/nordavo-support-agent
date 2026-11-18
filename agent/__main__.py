@@ -1,4 +1,4 @@
-"""CLI: `python -m agent run [--dry-run] [--limit N]`, `reset`, `status`."""
+"""CLI: `python -m agent run [--dry-run] [--limit N] [--ticket ID ...]`, `reset`, `status`."""
 
 import argparse
 import sys
@@ -35,10 +35,15 @@ def run_tickets(
     *,
     dry_run: bool = False,
     limit: int | None = None,
+    only: set[str] | None = None,
 ) -> Counter[Outcome]:
-    """Handle each open ticket once. One failing ticket never stops the run."""
+    """Handle each open ticket once. One failing ticket never stops the run.
+
+    `only` restricts the run to these ticket ids (for checking a few tickets in a dry run).
+    """
     counts: Counter[Outcome] = Counter()
-    for ticket in islice(client.iter_open_tickets(), limit):
+    tickets = (t for t in client.iter_open_tickets() if only is None or t.id in only)
+    for ticket in islice(tickets, limit):
         started = time.monotonic()
         result: DecisionResult | None = None
         error: str | None = None
@@ -140,6 +145,7 @@ def _log_entry(
         rule_hits=result.rule_hits,
         policy_notes=result.policy_notes,
         language_source=result.language_source,
+        reason_language=result.reason_language,
         tokens_in=result.tokens_in,
         tokens_out=result.tokens_out,
         cost_usd=result.cost_usd,
@@ -185,6 +191,13 @@ def main(argv: list[str] | None = None) -> int:
     run_cmd = commands.add_parser("run", help="decide and post every open ticket")
     run_cmd.add_argument("--dry-run", action="store_true", help="decide only; no POST, no journal")
     run_cmd.add_argument("--limit", type=int, default=None, help="handle at most N tickets")
+    run_cmd.add_argument(
+        "--ticket",
+        action="append",
+        dest="tickets",
+        metavar="ID",
+        help="only handle this ticket id (repeatable)",
+    )
     commands.add_parser("reset", help="re-open all practice tickets and archive the journal")
     commands.add_parser("status", help="show mode and ticket counts")
     args = parser.parse_args(argv)
@@ -218,7 +231,13 @@ def main(argv: list[str] | None = None) -> int:
             decide_fn = partial(decide, faq=faq, llm=llm, settings=settings)
             run_log = RunLog()
             counts = run_tickets(
-                client, journal, run_log, decide_fn, dry_run=args.dry_run, limit=args.limit
+                client,
+                journal,
+                run_log,
+                decide_fn,
+                dry_run=args.dry_run,
+                limit=args.limit,
+                only=set(args.tickets) if args.tickets else None,
             )
     except HelpdeskError as exc:
         print(f"Helpdesk error: {exc}", file=sys.stderr)

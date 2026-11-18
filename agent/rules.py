@@ -21,6 +21,8 @@ class Rule(StrEnum):
     security_incident = "security_incident"
     legal_threat = "legal_threat"
     churn_threat = "churn_threat"
+    # Not a client rule: text that tries to instruct the agent (prompt injection).
+    instructions_in_ticket = "instructions_in_ticket"
 
 
 class RuleHit(BaseModel):
@@ -135,6 +137,40 @@ _PATTERNS: dict[Rule, list[str]] = {
         r"(?:anderen|neuen)\s+anbieter", r"anbieter\s*wechsel\w*", r"(?:zur|zu\s+der)\s+konkurrenz",
         r"roosterly\s+verlassen",
     ],
+    # Text aimed at the agent rather than at support. "Ignore my previous email" is normal
+    # customer language, so "ignore" only counts when the object is instructions or rules.
+    Rule.instructions_in_ticket: [
+        # en
+        r"special\s+instructions?",
+        r"(?:ignore|disregard|forget)\s+(?:all\s+|any\s+|your\s+|the\s+)?(?:previous\s+|prior\s+|above\s+)?"
+        r"(?:instructions?|rules|prompts?|guidelines)",
+        r"system\s*prompt",
+        r"(?:note|message|instructions?)\s+(?:for|to)\s+(?:the\s+)?(?:ai|bot|assistant|agent|model)\b",
+        r"as\s+(?:the|an|a)\s+(?:ai|agent|assistant|bot|language\s+model)\b",
+        r"you\s+must\s+(?:confirm|approve|grant|give|apply|promise|agree)",
+        r"set\s+(?:the\s+|this\s+)?priority",
+        # nl
+        r"speciale\s+instructies?",
+        r"negeer\s+(?:alle\s+|je\s+|jouw\s+|de\s+)?(?:eerdere\s+|vorige\s+|bovenstaande\s+)?"
+        r"(?:instructies|regels|opdrachten|richtlijnen|prompts?)",
+        r"systeem\s*prompt",
+        r"(?:notitie|bericht|instructies?|opdracht)\s+(?:voor|aan)\s+(?:de\s+)?(?:ai|bot|assistent|agent)\b",
+        r"(?:voor|aan)\s+de\s+(?:ai|ki)[\s-]*(?:assistent|agent|bot)",
+        r"(?:zet|stel)\s+(?:de\s+)?prioriteit",
+        # "bevestig ... korting" is a demand; "geeft Roosterly korting?" is a price question.
+        r"bevestig\w*\s+(?:\w+\s+){0,4}korting",
+        # de
+        r"spezielle\s+anweisungen", r"systemprompt",
+        r"ignorier\w*\s+(?:alle\s+|deine\s+|die\s+)?(?:vorherigen\s+|bisherigen\s+)?"
+        r"(?:anweisungen|regeln|instruktionen|vorgaben)",
+        r"(?:notiz|nachricht|anweisung\w*)\s+(?:f(?:ü|ue)r|an)\s+(?:die\s+|den\s+)?(?:ki|ai|assistent\w*|bot|agent\w*)\b",
+        r"setze?\s+(?:die\s+)?priorit(?:ä|ae)t",
+        r"best(?:ä|ae)tig\w*\s+(?:\w+\s+){0,4}rabatt",
+        # any language: a percentage discount demand, or VIP status next to an instruction
+        r"\d+\s?%\s*(?:korting|discount|rabatt)",
+        r"vip\b.{0,200}?(?:instruct|anweisung|confirm|bevestig|best(?:ä|ae)tig|"
+        r"prioriteit|priority|priorit(?:ä|ae)t|korting|discount|rabatt)\w*",
+    ],
 }
 
 # "AVG" is the Dutch GDPR; case-sensitive so "avg hours" (average) does not match.
@@ -160,6 +196,29 @@ def forced_handoff_hits(subject: str, body: str) -> list[RuleHit]:
         if match and rule not in hits:
             hits[rule] = RuleHit(rule=rule, matched_phrase=match.group())
     return [hits[rule] for rule in Rule if rule in hits]
+
+
+# --- Commitments in handoff notes ------------------------------------------------------------
+
+# A handoff note tells a human what to check. It must never claim we did, promised or granted
+# something: nothing has been sent and nothing has been decided.
+_COMMITMENT_RE = re.compile(
+    r"(?<!\w)(?:"
+    r"added\s+to|we\s+(?:have\s+)?(?:fixed|added|resolved|refunded|credited|promised)|"
+    r"(?:we|i|support)\s+(?:have\s+|has\s+)?provided|"
+    r"provided\s+(?:a|an|the)\s+(?:workaround|solution|fix|instructions?|link|answer)|"
+    r"(?:we|i|is|has\s+been|have\s+been)\s+confirmed|confirm(?:ed)?\s+(?:the\s+|a\s+)?\d*\s?%?\s*discount|"
+    r"granted|discount|refund\s+(?:has\s+been\s+)?issued|issued\s+a\s+refund|promised|"
+    r"toegevoegd|korting|toegezegd|terugbetaald|"
+    r"hinzugef(?:ü|ue)gt|rabatt|gew(?:ä|ae)hrt|erstattet"
+    r")(?!\w)",
+    re.IGNORECASE,
+)
+
+
+def commitment_phrases(text: str) -> list[str]:
+    """Phrases in a handoff note that claim an action or promise. Empty list if none."""
+    return [match.group() for match in _COMMITMENT_RE.finditer(text)]
 
 
 # --- Empty tickets ---------------------------------------------------------------------------
