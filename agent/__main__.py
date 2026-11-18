@@ -139,6 +139,7 @@ def _log_entry(
         faq_ids=result.faq_ids,
         rule_hits=result.rule_hits,
         policy_notes=result.policy_notes,
+        language_source=result.language_source,
         tokens_in=result.tokens_in,
         tokens_out=result.tokens_out,
         cost_usd=result.cost_usd,

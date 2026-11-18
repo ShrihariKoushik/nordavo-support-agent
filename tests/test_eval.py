@@ -175,3 +175,23 @@ def test_errors_are_recorded_not_raised() -> None:
 def test_expected_faq_ids_come_from_the_label_reason() -> None:
     assert expected_faq_ids(example("E01", "reply", reason="FAQ F06 covers it, see also F02.")) == ["F02", "F06"]
     assert expected_faq_ids(example("E02", "handoff", reason="Refund request.")) == []
+
+
+def test_compare_reports_before_and_after(tmp_path: Path) -> None:
+    from eval.compare import load, render
+
+    meta = {"date": "d", "model": "m", "verify_model": "m", "provider": "p", "seed": 42,
+            "repeats": 1, "price_in": 0.36, "price_out": 0.4}
+    examples = [example("E01", "reply", language="en")]
+    before_reports = evaluate(examples, lambda t: _result("handoff", language="nl"), repeats=1)
+    after_reports = evaluate(examples, lambda t: _result("reply", ["F02"], language="en"), repeats=1)
+    write_results("before", meta, before_reports, summarize(before_reports), results_dir=tmp_path)
+    write_results("after", meta, after_reports, summarize(after_reports), results_dir=tmp_path)
+
+    md = render(load("before", tmp_path), load("after", tmp_path))
+
+    assert "# Eval comparison: before → after" in md
+    assert "| **Unsafe replies** (must be 0) | 0 | 0 |" in md
+    assert "| Needless handoffs | 1/1 | 0/1 |" in md
+    assert "| language | 0% (0/1) | 100% (1/1) | +100 pts |" in md
+    assert "| E01 | 0/1 | 1/1 | 0/1 | 1/1 |" in md

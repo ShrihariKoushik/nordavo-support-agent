@@ -53,6 +53,7 @@ class RunRecord(BaseModel):
     faq_ids: list[str] = Field(default_factory=list)
     rule_hits: list[str] = Field(default_factory=list)
     policy_notes: list[str] = Field(default_factory=list)
+    language_source: str | None = None
     verifier: str | None = None  # pass | fail | None when not a reply
     language_issues: list[str] = Field(default_factory=list)
     back_translation: str | None = None
@@ -147,6 +148,7 @@ def _run_once(example: Example, decide_fn: DecideFn, run: int, expected: dict[st
             faq_ids=result.faq_ids,
             rule_hits=result.rule_hits,
             policy_notes=result.policy_notes,
+            language_source=result.language_source,
             verifier=None if verifier is None else ("pass" if verifier.passed else "fail"),
             language_issues=[] if verifier is None else verifier.language_issues,
             back_translation=None if verifier is None else verifier.back_translation,

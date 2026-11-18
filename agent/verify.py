@@ -11,7 +11,8 @@ from pydantic import BaseModel, Field
 from agent.config import Settings
 from agent.faq import FaqEntry
 from agent.llm import JsonLlm, LlmInvalidOutput, Usage
-from agent.models import Decision, Ticket
+from agent.lang import detect_language
+from agent.models import Decision, Language, Ticket
 from agent.prompts import VERIFY_SYSTEM, VerifyResult, verify_user
 
 
@@ -34,12 +35,14 @@ def verify_reply(
     *,
     llm: JsonLlm,
     settings: Settings,
+    expected_language: Language | None = None,
 ) -> VerifyOutcome:
+    """`expected_language` is the ticket language detected by code, when it was confident."""
     draft = decision.draft_reply or ""
     try:
         result, usage = llm.complete_json(
             VERIFY_SYSTEM,
-            verify_user(ticket, draft, cited_faq_entries),
+            verify_user(ticket, draft, cited_faq_entries, expected_language),
             VerifyResult,
             model=settings.verify_model,
         )
@@ -51,6 +54,12 @@ def verify_reply(
 
     cited_ids = {entry.id for entry in cited_faq_entries}
     failures = verification_failures(result, cited_ids)
+    # Code check on top of the checker: a clearly-detected draft language must match the ticket.
+    draft_language = detect_language(draft)
+    if expected_language and draft_language and draft_language[0] is not expected_language:
+        failures.append(
+            f"reply is in {draft_language[0].value}, ticket is in {expected_language.value}"
+        )
     unsupported = sum(1 for claim in result.claims if not _grounded(claim.supported, claim.faq_id, cited_ids))
     return VerifyOutcome(
         passed=not failures,

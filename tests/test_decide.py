@@ -322,3 +322,40 @@ def test_handoff_and_close_skip_the_verifier() -> None:
     spam = FakeLlm(proposal(proposed_action="close", is_spam=True, faq_ids=[], category="other"))
     assert decide(ticket("Crypto", "Koop nu!"), faq=FAQ, llm=spam, settings=SETTINGS).verifier is None
     assert spam.calls == 1
+
+
+# --- Language from code ----------------------------------------------------------------------
+
+ENGLISH_BODY = "How do I add a new employee to our team? I can not find it in the app."
+
+
+def test_code_language_overrides_a_wrong_model_language() -> None:
+    english_reply = "Hi! Go to Team → Medewerker toevoegen and add the employee there. Team Roosterly"
+    llm = FakeLlm(proposal(language="nl", draft_reply=english_reply))
+    result = decide(ticket("New employee", ENGLISH_BODY), faq=FAQ, llm=llm, settings=SETTINGS)
+
+    assert result.decision.language.value == "en"
+    assert result.language_source == "code"
+    assert "language set to en by code (model said nl)" in result.policy_notes
+    assert result.decision.action is Action.reply
+    draft_prompt, verify_prompt = llm.prompts[0][1], llm.prompts[1][1]
+    assert 'the customer wrote in English ("en")' in draft_prompt
+    assert "Expected reply language (measured by code from the ticket): English." in verify_prompt
+
+
+def test_unclear_language_keeps_the_model_value() -> None:
+    llm = FakeLlm(proposal(language="de", proposed_action="handoff"))
+    result = decide(ticket("Export", "Nmbrs export kapot"), faq=FAQ, llm=llm, settings=SETTINGS)
+
+    assert result.decision.language.value == "de"
+    assert result.language_source == "model"
+    assert "Detected language" not in llm.prompts[0][1]
+
+
+def test_dutch_draft_for_english_ticket_fails_even_if_checker_passes() -> None:
+    dutch_reply = "Hoi! Je kunt een medewerker toevoegen via Team → Medewerker toevoegen. Groet, Team Roosterly"
+    llm = FakeLlm(proposal(draft_reply=dutch_reply))  # checker says pass by default
+    result = decide(ticket("New employee", ENGLISH_BODY), faq=FAQ, llm=llm, settings=SETTINGS)
+
+    assert result.decision.action is Action.handoff
+    assert "reply is in nl, ticket is in en" in (result.decision.handoff_note or "")

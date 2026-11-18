@@ -3,7 +3,6 @@
 - `forced_handoff_hits`: client rules that always go to a human (nl/en/de vocabulary).
 - `is_empty`: nothing but greetings, sign-offs and a name.
 - `redact_payment_details`: mask card numbers and IBANs (used for logs too).
-- `guess_language`: fallback nl/en/de when no model output is available.
 
 The patterns are general vocabulary for each intent, not phrases from specific tickets.
 They aim for precision; the LLM flags the same intents, so this is a safety net.
@@ -234,26 +233,6 @@ def _match_phrase(lower: list[str], index: int) -> tuple[str, ...] | None:
         if tuple(lower[index : index + len(phrase)]) == phrase:
             return phrase
     return None
-
-
-# --- Language guess (only used when the model gives us nothing) -----------------------------
-
-_LANGUAGE_WORDS: dict[str, set[str]] = {
-    "nl": {"de", "het", "een", "ik", "we", "wij", "niet", "is", "en", "van", "voor", "hoe", "mijn",
-           "ons", "onze", "kan", "kunnen", "graag", "bedankt", "groet", "dat", "dit", "met", "op"},
-    "en": {"the", "a", "an", "i", "we", "not", "is", "and", "of", "for", "how", "my", "our", "can",
-           "please", "thanks", "regards", "that", "this", "with", "on", "to"},
-    "de": {"der", "die", "das", "ein", "eine", "ich", "wir", "nicht", "ist", "und", "von", "für",
-           "wie", "mein", "unser", "kann", "bitte", "danke", "grüße", "dass", "mit", "auf"},
-}
-
-
-def guess_language(subject: str, body: str) -> str:
-    """Rough nl/en/de guess by common words. Dutch on a tie: most customers write Dutch."""
-    words = [word.lower() for word in _WORD_RE.findall(f"{subject} {body}")]
-    scores = {lang: sum(word in vocab for word in words) for lang, vocab in _LANGUAGE_WORDS.items()}
-    best = max(scores, key=lambda lang: scores[lang])
-    return best if scores[best] > scores["nl"] else "nl"
 
 
 # --- Payment details --------------------------------------------------------------------------

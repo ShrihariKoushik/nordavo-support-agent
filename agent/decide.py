@@ -11,9 +11,10 @@ from pydantic import BaseModel, Field
 from agent.config import Settings
 from agent.faq import Faq
 from agent.llm import JsonLlm, LlmInvalidOutput, Usage
+from agent.lang import detect_language
 from agent.models import Action, Category, Decision, Language, Priority, Ticket
 from agent.prompts import LlmDecision, decide_system, decide_user
-from agent.rules import forced_handoff_hits, guess_language, is_empty, redact_payment_details
+from agent.rules import forced_handoff_hits, is_empty, redact_payment_details
 from agent.verify import VerifyOutcome, verify_reply
 
 
@@ -22,6 +23,8 @@ class DecisionResult(BaseModel):
     faq_ids: list[str] = Field(default_factory=list)
     rule_hits: list[str] = Field(default_factory=list)
     policy_notes: list[str] = Field(default_factory=list)
+    # Where decision.language came from: "code" (detected), "model", or "default" (nl).
+    language_source: str = "model"
     verifier: VerifyOutcome | None = None  # None when the decision was not a reply
     tokens_in: int = 0
     tokens_out: int = 0
@@ -37,26 +40,40 @@ def decide(ticket: Ticket, *, faq: Faq, llm: JsonLlm, settings: Settings) -> Dec
 
 
 def _decide(ticket: Ticket, *, faq: Faq, llm: JsonLlm, settings: Settings) -> DecisionResult:
+    # The language comes from code when the text is clear; the model only fills gaps.
+    detected = detect_language(f"{ticket.subject}\n{ticket.body}")
+    code_language = detected[0] if detected else None
+
     # a) Nothing to answer: close without spending a model call.
     if is_empty(ticket.subject, ticket.body):
         decision = Decision(
-            language=Language(guess_language(ticket.subject, ticket.body)),
+            language=code_language or Language.nl,
             category=Category.other,
             priority=Priority.P4,
             reason="Empty ticket: no question or content to act on.",
             action=Action.close,
             handoff_note="Empty ticket (only greetings or a signature); closed.",
         )
-        return DecisionResult(decision=decision, policy_notes=["empty ticket: closed without LLM"])
+        return DecisionResult(
+            decision=decision,
+            policy_notes=["empty ticket: closed without LLM"],
+            language_source="code" if code_language else "default",
+        )
 
     hits = forced_handoff_hits(ticket.subject, ticket.body)
     rule_names = [hit.rule.value for hit in hits]
 
     # b) Ask the model.
     try:
-        proposal, usage = llm.complete_json(decide_system(faq), decide_user(ticket), LlmDecision)
+        proposal, usage = llm.complete_json(
+            decide_system(faq), decide_user(ticket, language=code_language), LlmDecision
+        )
     except LlmInvalidOutput as exc:
-        return _fallback_handoff(ticket, rule_names, exc.usage)
+        return _fallback_handoff(ticket, rule_names, exc.usage, code_language)
+    if code_language and proposal.language is not code_language:
+        notes_language = f"language set to {code_language.value} by code (model said {proposal.language.value})"
+    else:
+        notes_language = None
 
     # c) Policy in code.
     action, priority, notes = _apply_policy(proposal, rule_names, faq, settings)
@@ -69,7 +86,7 @@ def _decide(ticket: Ticket, *, faq: Faq, llm: JsonLlm, settings: Settings) -> De
     if action is Action.handoff and notes:
         handoff_note = f"[{'; '.join(notes)}] {handoff_note}"
     decision = Decision(
-        language=proposal.language,
+        language=code_language or proposal.language,
         category=proposal.category,
         priority=priority,
         reason=redact_payment_details(reason),
@@ -83,7 +100,9 @@ def _decide(ticket: Ticket, *, faq: Faq, llm: JsonLlm, settings: Settings) -> De
     verified: VerifyOutcome | None = None
     if decision.action is Action.reply:
         cited = [entry for entry in faq.entries if entry.id in proposal.faq_ids]
-        verified = verify_reply(ticket, decision, cited, llm=llm, settings=settings)
+        verified = verify_reply(
+            ticket, decision, cited, llm=llm, settings=settings, expected_language=code_language
+        )
         usage += verified.usage
         if not verified.passed:
             failed = "Draft failed verification: " + "; ".join(verified.failures) + "."
@@ -99,11 +118,14 @@ def _decide(ticket: Ticket, *, faq: Faq, llm: JsonLlm, settings: Settings) -> De
                 }
             )
 
+    if notes_language:
+        notes.append(notes_language)
     return DecisionResult(
         decision=decision,
         faq_ids=proposal.faq_ids,
         rule_hits=rule_names,
         policy_notes=notes,
+        language_source="code" if code_language else "model",
         verifier=verified,
         tokens_in=usage.tokens_in,
         tokens_out=usage.tokens_out,
@@ -157,13 +179,15 @@ def _apply_policy(
     return action, priority, notes
 
 
-def _fallback_handoff(ticket: Ticket, rule_names: list[str], usage: Usage) -> DecisionResult:
+def _fallback_handoff(
+    ticket: Ticket, rule_names: list[str], usage: Usage, code_language: Language | None
+) -> DecisionResult:
     """The model gave unusable output twice. A human reads it; we guess only what we must."""
     note = "model output invalid twice, handed off"
     if rule_names:
         note += f"; forced handoff ({', '.join(rule_names)})"
     decision = Decision(
-        language=Language(guess_language(ticket.subject, ticket.body)),
+        language=code_language or Language.nl,
         category=Category.other,
         priority=Priority.P2 if rule_names else Priority.P3,
         reason=f"Automatic triage failed. Policy: {note}.",
@@ -177,6 +201,7 @@ def _fallback_handoff(ticket: Ticket, rule_names: list[str], usage: Usage) -> De
         decision=decision,
         rule_hits=rule_names,
         policy_notes=[note],
+        language_source="code" if code_language else "default",
         tokens_in=usage.tokens_in,
         tokens_out=usage.tokens_out,
         cost_usd=usage.cost_usd,
