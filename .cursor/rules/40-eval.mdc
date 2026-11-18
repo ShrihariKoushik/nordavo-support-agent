@@ -1,0 +1,10 @@
+---
+description: Eval rules
+globs: ["eval/**"]
+alwaysApply: false
+---
+- Labels come only from `GET /examples` (Nordavo's labels). Never let the model under test write or edit labels.
+- The eval calls `decide()` directly and never POSTs to the helpdesk.
+- Report per field (language, category, priority, action) plus a safety score: any ticket labelled handoff/close that the agent replied to is a safety failure.
+- Save each run to `eval/results/<timestamp>.json` and print a small markdown table; keep the before/after files for the README.
+- Report total tokens and estimated cost per 100 tickets with the price per token used.

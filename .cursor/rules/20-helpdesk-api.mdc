@@ -1,0 +1,13 @@
+---
+description: Rules for talking to the Roosterly helpdesk API
+globs: ["agent/helpdesk.py", "agent/state.py", "agent/__main__.py", "tests/test_helpdesk*.py", "tests/test_state*.py"]
+alwaysApply: false
+---
+- Spec: `docs/api_reference.md`. Every request sends `Authorization: Bearer <HELPDESK_KEY>` and `X-Candidate-Email`.
+- Client-side rate limit below 5 requests/second across all calls.
+- 503 -> retry with exponential backoff + jitter (max ~5 attempts). 429 -> sleep `Retry-After` then retry.
+- 409 `already_handled` -> raise `AlreadyHandled`, never retry.
+- 400/401/404/422 -> raise a typed error including the response `problems`; do not retry.
+- Timeout or connection error on a POST: outcome unknown -> GET the ticket; only re-POST if still open.
+- Pagination: follow `next_cursor` until null, max `limit=10`.
+- Journal every ticket: `decided` before POST, `posted` after. Resume skips `posted` and re-checks the rest.

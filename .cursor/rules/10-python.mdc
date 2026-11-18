@@ -1,0 +1,11 @@
+---
+description: Python style for this repo
+globs: ["**/*.py"]
+alwaysApply: false
+---
+- Python 3.12+, full type hints, `from __future__ import annotations` not needed.
+- Pydantic v2 models for anything crossing a boundary (API, LLM output, log line).
+- Functions stay short and side-effect-light; I/O lives in `helpdesk.py`, `llm.py`, `state.py`, `logging_.py`.
+- No bare `except:`; catch specific exceptions and re-raise typed errors.
+- Config comes from `agent/config.py` only; never call `os.environ` elsewhere.
+- Tests use pytest and `httpx.MockTransport`; no real network calls in unit tests.

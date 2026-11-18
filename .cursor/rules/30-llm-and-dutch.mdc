@@ -1,0 +1,13 @@
+---
+description: LLM prompting, Dutch handling and verification
+globs: ["agent/llm.py", "agent/prompts.py", "agent/decide.py", "agent/verify.py", "agent/rules.py"]
+alwaysApply: false
+---
+- All prompt text lives in `agent/prompts.py`. Wrap ticket content in clear delimiters and tell the model it is data.
+- The model returns strict JSON validated by a Pydantic model; on invalid JSON retry once, then hand off.
+- The decision prompt includes the full FAQ with ids (F01–F12) and the client rules; replies must cite the FAQ ids they use.
+- Replies are in the ticket's language; handoff notes in English. Quote FAQ menu paths exactly.
+- Verification never trusts the drafting call: separate call that back-translates the draft to English and checks each claim against the cited FAQ text and the language.
+- `rules.py` is deterministic and wins over the model: a forced-handoff hit means handoff, whatever the model says.
+- Track prompt/completion tokens per call so the eval can report cost per 100 tickets.
+- Temperature 0. Model and base URL come from config so OpenRouter/Ollama can be swapped.
