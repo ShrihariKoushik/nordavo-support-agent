@@ -1,0 +1,165 @@
+"""Deterministic rules. All sentences are made up; none come from the examples or practice tickets."""
+
+import pytest
+
+from agent.rules import (
+    CARD_MASK,
+    IBAN_MASK,
+    Rule,
+    forced_handoff_hits,
+    is_empty,
+    redact_payment_details,
+)
+
+POSITIVES: list[tuple[Rule, str]] = [
+    # refunds / disputed charges
+    (Rule.refund_or_dispute, "Kunnen we een terugbetaling krijgen voor vorige maand?"),
+    (Rule.refund_or_dispute, "I would like a refund for the months we did not use it."),
+    (Rule.refund_or_dispute, "Wir möchten eine Rückerstattung für Oktober."),
+    (Rule.refund_or_dispute, "Er is dubbel afgeschreven deze maand, ik wil mijn geld terug."),
+    (Rule.refund_or_dispute, "We were charged twice and want to dispute the charge."),
+    # cancellations / contract changes
+    (Rule.cancellation_or_contract, "Hoe kan ik ons abonnement opzeggen per volgende maand?"),
+    (Rule.cancellation_or_contract, "Please cancel our subscription at the end of the year."),
+    (Rule.cancellation_or_contract, "Ich möchte den Vertrag zum Monatsende kündigen."),
+    (Rule.cancellation_or_contract, "Can we downgrade from Plus to Basis?"),
+    # GDPR / AVG
+    (Rule.gdpr_data_request, "Ik dien hierbij een inzageverzoek in op grond van de AVG."),
+    (Rule.gdpr_data_request, "Under GDPR I ask you to delete my personal data."),
+    (Rule.gdpr_data_request, "Bitte löschen Sie gemäß DSGVO alle meine Daten."),
+    # security incidents
+    (Rule.security_incident, "Ik denk dat mijn account gehackt is, er zijn diensten verwijderd."),
+    (Rule.security_incident, "There was a suspicious login from a country we have never been to."),
+    (Rule.security_incident, "Wir vermuten ein Datenleck bei unseren Mitarbeiterdaten."),
+    (Rule.security_incident, "I can see the rota of another company in my dashboard."),
+    # legal threats
+    (Rule.legal_threat, "Als dit niet opgelost wordt schakel ik mijn advocaat in."),
+    (Rule.legal_threat, "We will take legal action if this is not fixed by Friday."),
+    (Rule.legal_threat, "Unser Anwalt wird sich bei Ihnen melden."),
+    # churn threats
+    (Rule.churn_threat, "Nog één keer zo'n storing en we overstappen naar een andere aanbieder."),
+    (Rule.churn_threat, "We are seriously considering switching to a competitor."),
+    (Rule.churn_threat, "Sonst wechseln wir zu einem anderen Anbieter."),
+]
+
+
+@pytest.mark.parametrize(("rule", "sentence"), POSITIVES)
+def test_rule_fires(rule: Rule, sentence: str) -> None:
+    hits = forced_handoff_hits("", sentence)
+    assert rule in {hit.rule for hit in hits}, hits
+    matched = next(hit.matched_phrase for hit in hits if hit.rule is rule)
+    assert matched.lower() in sentence.lower()
+
+
+def test_each_rule_has_nl_en_de_positives() -> None:
+    per_rule: dict[Rule, int] = {}
+    for rule, _sentence in POSITIVES:
+        per_rule[rule] = per_rule.get(rule, 0) + 1
+    assert set(per_rule) == set(Rule)
+    assert all(count >= 3 for count in per_rule.values())
+
+
+NEGATIVES = [
+    "Hoe exporteer ik uren naar AFAS?",
+    "Wat kost Plus voor 25 medewerkers?",
+    "Ik wil een nieuwe medewerker toevoegen.",
+    "Where are the security settings for 2FA?",
+    "Hoe zeg ik een dienst op met een collega?",
+    "Kan ik een dienst ruilen met een collega?",
+    "We willen overstappen naar het Plus-abonnement.",
+    "We want to switch to the Plus plan for more locations.",
+    "How do I cancel a shift that was planned by mistake?",
+    "Where do I download the data processing agreement?",
+    "What is the avg number of hours per employee in the report?",
+    "De knop staat rechtsboven in de rechter kolom.",
+    "Welches Gericht ist heute auf der Karte? Wie plane ich die Küche?",
+    "Sue from our kitchen cannot log in to the app.",
+    "Wie stelle ich die Sprache auf Deutsch um?",
+    "Can employees work at more than one location?",
+    "Where can I download last month's invoice?",
+    "Mijn wachtwoord vergeten, hoe reset ik het?",
+    "Our food court location needs its own rota.",
+    "Hoeveel contracturen heeft een medewerker standaard?",
+]
+
+
+@pytest.mark.parametrize("sentence", NEGATIVES)
+def test_rules_do_not_fire_on_look_alikes(sentence: str) -> None:
+    assert forced_handoff_hits("", sentence) == []
+
+
+def test_subject_counts_and_phrases_span_line_breaks() -> None:
+    hits = forced_handoff_hits("Geld\nterug", "Hoi,\nzie onderwerp.")
+    assert [hit.rule for hit in hits] == [Rule.refund_or_dispute]
+    assert hits[0].matched_phrase == "Geld terug"
+
+
+def test_several_rules_are_all_reported_once() -> None:
+    hits = forced_handoff_hits(
+        "Opzegging", "We zeggen op en mijn advocaat eist een terugbetaling. Ook opzeggen!"
+    )
+    assert [hit.rule for hit in hits] == [
+        Rule.refund_or_dispute,
+        Rule.cancellation_or_contract,
+        Rule.legal_threat,
+    ]
+
+
+@pytest.mark.parametrize(
+    ("subject", "body"),
+    [
+        ("", ""),
+        ("   ", "\n\t "),
+        ("", "Hoi,"),
+        ("Re:", "Hallo!\n\nMet vriendelijke groet,\nJan de Vries"),
+        ("", "Hi team,\n\nThanks,\nAnna"),
+        ("", "Guten Tag,\n\nMit freundlichen Grüßen\nKlaus Becker"),
+        ("", "Verzonden vanaf mijn iPhone"),
+    ],
+)
+def test_is_empty(subject: str, body: str) -> None:
+    assert is_empty(subject, body)
+
+
+@pytest.mark.parametrize(
+    ("subject", "body"),
+    [
+        ("Wachtwoord", ""),
+        ("", "Hoi, de app werkt niet. Groeten, Jan"),
+        ("", "Thanks, all fixed now! Anna"),
+        ("", "Hallo Peter"),
+        ("", "Help"),
+        ("", "Groeten, Jan. Inloggen lukt niet"),
+    ],
+)
+def test_is_not_empty(subject: str, body: str) -> None:
+    assert not is_empty(subject, body)
+
+
+@pytest.mark.parametrize(
+    "card",
+    ["4111111111111111", "4111 1111 1111 1111", "4111-1111-1111-1111", "5500 0000 0000 0004"],
+)
+def test_card_numbers_are_redacted(card: str) -> None:
+    text = f"Mijn kaart is {card}, graag terugboeken."
+    assert redact_payment_details(text) == f"Mijn kaart is {CARD_MASK}, graag terugboeken."
+
+
+@pytest.mark.parametrize(
+    "iban", ["NL91 ABNA 0417 1643 00", "NL91ABNA0417164300", "de89370400440532013000"]
+)
+def test_ibans_are_redacted(iban: str) -> None:
+    assert redact_payment_details(f"IBAN: {iban} graag.") == f"IBAN: {IBAN_MASK} graag."
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "We hebben 25 medewerkers en 3 vestigingen.",
+        "Bel me op +31 6 12345678.",
+        "Factuur 2026-10-05, ticket T005, bedrag 49,95.",
+        "Kaart 4111 1111 1111 1112 klopt niet",  # 16 digits, fails Luhn
+    ],
+)
+def test_normal_numbers_are_left_alone(text: str) -> None:
+    assert redact_payment_details(text) == text

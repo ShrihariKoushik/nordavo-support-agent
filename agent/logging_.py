@@ -5,7 +5,6 @@ by accident. Every string is redacted for card numbers and IBANs before writing.
 """
 
 import json
-import re
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
@@ -14,19 +13,9 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from agent.config import PROJECT_ROOT
+from agent.rules import redact_payment_details
 
 DEFAULT_LOG_DIR = PROJECT_ROOT / "logs"
-
-CARD_MASK = "[REDACTED_CARD]"
-IBAN_MASK = "[REDACTED_IBAN]"
-
-# 13-19 digits, single spaces or dashes allowed between digits.
-_CARD_RE = re.compile(r"(?<!\d)\d(?:[ -]?\d){12,18}(?!\d)")
-# Country code, 2 check digits, then 11-30 letters/digits, optionally in groups of 4.
-_IBAN_RE = re.compile(
-    r"\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]{4}){2,7}(?: ?[A-Z0-9]{1,3})?\b",
-    re.IGNORECASE,
-)
 
 
 class Outcome(StrEnum):
@@ -74,41 +63,12 @@ class RunLog:
             handle.write(json.dumps(line, ensure_ascii=False) + "\n")
 
 
-def redact(text: str) -> str:
-    """Mask IBANs and Luhn-valid card numbers. Other numbers stay as they are."""
-    text = _IBAN_RE.sub(_mask_iban, text)
-    return _CARD_RE.sub(_mask_card, text)
-
-
 def redact_value(value: Any) -> Any:
     """Redact every string inside dicts and lists."""
     if isinstance(value, str):
-        return redact(value)
+        return redact_payment_details(value)
     if isinstance(value, dict):
         return {key: redact_value(item) for key, item in value.items()}
     if isinstance(value, list):
         return [redact_value(item) for item in value]
     return value
-
-
-def _mask_iban(match: re.Match[str]) -> str:
-    compact = match.group().replace(" ", "")
-    # Real IBANs are 15-34 characters. Shorter matches are something else.
-    return IBAN_MASK if 15 <= len(compact) <= 34 else match.group()
-
-
-def _mask_card(match: re.Match[str]) -> str:
-    digits = re.sub(r"\D", "", match.group())
-    return CARD_MASK if _luhn_ok(digits) else match.group()
-
-
-def _luhn_ok(digits: str) -> bool:
-    total = 0
-    for index, char in enumerate(reversed(digits)):
-        number = int(char)
-        if index % 2 == 1:
-            number *= 2
-            if number > 9:
-                number -= 9
-        total += number
-    return total % 10 == 0
