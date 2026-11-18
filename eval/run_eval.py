@@ -56,6 +56,7 @@ class RunRecord(BaseModel):
     language_source: str | None = None
     reason_language: str | None = None
     name_removed: bool = False
+    promise_phrase: str | None = None
     verifier: str | None = None  # pass | fail | None when not a reply
     language_issues: list[str] = Field(default_factory=list)
     language_override: bool = False
@@ -154,6 +155,7 @@ def _run_once(example: Example, decide_fn: DecideFn, run: int, expected: dict[st
             language_source=result.language_source,
             reason_language=result.reason_language,
             name_removed=result.name_removed,
+            promise_phrase=result.promise_phrase,
             verifier=None if verifier is None else ("pass" if verifier.passed else "fail"),
             language_issues=[] if verifier is None else verifier.language_issues,
             language_override=False if verifier is None else verifier.language_override,

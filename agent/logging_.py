@@ -53,6 +53,7 @@ class TicketLog(BaseModel):
     language_source: str | None = None  # code | model | default
     reason_language: str | None = None  # detected language of `reason`; should be en
     name_removed: bool = False  # code removed an invented greeting name from the reply
+    promise_phrase: str | None = None  # promise-to-the-customer phrase code found in a draft
     verifier_verdict: str | None = None  # pass | fail | None when not a reply
     verifier_claims: int | None = None
     verifier_unsupported: int | None = None

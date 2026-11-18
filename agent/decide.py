@@ -5,6 +5,7 @@ reason is added to `policy_notes` so the log and the eval can show it.
 """
 
 import time
+from functools import partial
 
 from pydantic import BaseModel, Field
 
@@ -16,6 +17,7 @@ from agent.models import Action, Category, Decision, Language, Priority, Ticket
 from agent.prompts import (
     ENGLISH_FIELDS_CORRECTION,
     INSTRUCTIONS_NOTE,
+    PROMISE_CORRECTION,
     SAFE_NOTE,
     LlmDecision,
     decide_system,
@@ -26,6 +28,7 @@ from agent.rules import (
     commitment_phrases,
     forced_handoff_hits,
     is_empty,
+    promise_phrases,
     redact_payment_details,
     remove_invented_name,
 )
@@ -43,6 +46,8 @@ class DecisionResult(BaseModel):
     reason_language: str | None = None
     # True when code removed a greeting name that does not appear in the ticket.
     name_removed: bool = False
+    # The promise-to-the-customer phrase code found in a draft, if any (see rules.promise_phrases).
+    promise_phrase: str | None = None
     verifier: VerifyOutcome | None = None  # None when the decision was not a reply
     tokens_in: int = 0
     tokens_out: int = 0
@@ -99,16 +104,133 @@ def _decide(ticket: Ticket, *, faq: Faq, llm: JsonLlm, settings: Settings) -> De
             proposal = retried
         except LlmInvalidOutput as exc:
             usage += exc.usage  # keep the first, valid proposal
+    # c-e) Policy in code, the final decision, and no invented greeting names.
+    build = partial(
+        _build, ticket=ticket, rule_names=rule_names, faq=faq, settings=settings,
+        code_language=code_language,
+    )
+    decision, notes, name_removed = build(proposal)
+
+    # f) No promises to the customer ("your request is on the roadmap"). Code decides this,
+    # not the checker: one redraft with a correction, then a handoff.
+    promise_phrase: str | None = None
+    found = promise_phrases(decision.draft_reply or "") if decision.action is Action.reply else []
+    if found:
+        promise_phrase = found[0]
+        redraft: LlmDecision | None = None
+        try:
+            redraft, call_usage = llm.complete_json(
+                system, f"{user}\n\n{PROMISE_CORRECTION}", LlmDecision
+            )
+            usage += call_usage
+        except LlmInvalidOutput as exc:
+            usage += exc.usage
+        if redraft is not None:
+            new_decision, new_notes, new_name_removed = build(redraft)
+            still = (
+                promise_phrases(new_decision.draft_reply or "")
+                if new_decision.action is Action.reply
+                else []
+            )
+            if not still:
+                # Use the redraft as it is: a clean reply, or a handoff the model now prefers.
+                proposal, decision, name_removed = redraft, new_decision, new_name_removed
+                notes = [f"draft promised the customer something ('{promise_phrase}'), redrafted"]
+                notes += new_notes
+                found = []
+            else:
+                proposal, decision, notes = redraft, new_decision, new_notes
+                promise_phrase = still[0]
+        if found:
+            notes.append(f"draft promised the customer something ('{promise_phrase}'), handed off")
+            not_sent = (
+                "A draft reply was written but NOT sent: it told the customer something was done "
+                f"or decided for them ('{promise_phrase}')."
+            )
+            decision = decision.model_copy(
+                update={
+                    "action": Action.handoff,
+                    "draft_reply": None,
+                    "handoff_note": redact_payment_details(
+                        f"{not_sent} {_honest_note(proposal, decision.priority, notes)}"
+                    ),
+                    "reason": redact_payment_details(
+                        f"{proposal.reason} Policy: reply promised the customer something, handed off."
+                    ),
+                }
+            )
     reason_detected = detect_language(proposal.reason)
     reason_language = reason_detected[0].value if reason_detected else None
 
-    # c) Policy in code.
+    # g) Only replies reach a customer, so only replies are checked.
+    verified: VerifyOutcome | None = None
+    if decision.action is Action.reply:
+        cited = [entry for entry in faq.entries if entry.id in proposal.faq_ids]
+        verified = verify_reply(
+            ticket, decision, cited, llm=llm, settings=settings, expected_language=code_language
+        )
+        usage += verified.usage
+        if not verified.passed:
+            notes.append("reply failed verification, handed off")
+            # Say plainly that the draft was not sent, so its content is not mistaken for an answer.
+            failed = (
+                "A draft reply was written but NOT sent: it failed verification ("
+                + "; ".join(verified.failures)
+                + ")."
+            )
+            decision = decision.model_copy(
+                update={
+                    "action": Action.handoff,
+                    "draft_reply": None,
+                    "handoff_note": redact_payment_details(
+                        f"{failed} {_honest_note(proposal, decision.priority, notes)}"
+                    ),
+                    "reason": redact_payment_details(
+                        f"{proposal.reason} Policy: reply failed verification, handed off."
+                    ),
+                }
+            )
+
+    if code_language and proposal.language is not code_language:
+        notes.append(
+            f"language set to {code_language.value} by code (model said {proposal.language.value})"
+        )
+    return DecisionResult(
+        decision=decision,
+        faq_ids=proposal.faq_ids,
+        rule_hits=rule_names,
+        policy_notes=notes,
+        language_source="code" if code_language else "model",
+        reason_language=reason_language,
+        name_removed=name_removed,
+        promise_phrase=promise_phrase,
+        verifier=verified,
+        tokens_in=usage.tokens_in,
+        tokens_out=usage.tokens_out,
+        cost_usd=usage.cost_usd,
+    )
+
+
+def _build(
+    proposal: LlmDecision,
+    *,
+    ticket: Ticket,
+    rule_names: list[str],
+    faq: Faq,
+    settings: Settings,
+    code_language: Language | None,
+) -> tuple[Decision, list[str], bool]:
+    """Policy in code, then the Decision, then the greeting-name check.
+
+    Returns the decision, the policy notes and whether an invented name was removed.
+    Used for the first proposal and, if needed, for one redraft.
+    """
     action, priority, notes = _apply_policy(proposal, rule_names, faq, settings)
     injected = Rule.instructions_in_ticket.value in set(rule_names) | set(
         proposal.needs_human_reasons
     )
 
-    # d) Final decision. Payment details never leave in any text field.
+    # Payment details never leave in any text field.
     if injected:
         # The model read the injected text; none of its prose about this ticket is trusted.
         reason = "Ticket contains instructions aimed at the support agent; treated as untrusted."
@@ -135,7 +257,7 @@ def _decide(ticket: Ticket, *, faq: Faq, llm: JsonLlm, settings: Settings) -> De
         confidence=proposal.confidence,
     )
 
-    # e) Never greet a customer by a name they did not give us.
+    # Never greet a customer by a name they did not give us.
     name_removed = False
     if decision.action is Action.reply and decision.draft_reply:
         fixed, removed = remove_invented_name(
@@ -145,53 +267,7 @@ def _decide(ticket: Ticket, *, faq: Faq, llm: JsonLlm, settings: Settings) -> De
             name_removed = True
             notes.append("greeting name not found in ticket, removed")
             decision = decision.model_copy(update={"draft_reply": fixed})
-
-    # f) Only replies reach a customer, so only replies are checked.
-    verified: VerifyOutcome | None = None
-    if decision.action is Action.reply:
-        cited = [entry for entry in faq.entries if entry.id in proposal.faq_ids]
-        verified = verify_reply(
-            ticket, decision, cited, llm=llm, settings=settings, expected_language=code_language
-        )
-        usage += verified.usage
-        if not verified.passed:
-            notes.append("reply failed verification, handed off")
-            # Say plainly that the draft was not sent, so its content is not mistaken for an answer.
-            failed = (
-                "A draft reply was written but NOT sent: it failed verification ("
-                + "; ".join(verified.failures)
-                + ")."
-            )
-            decision = decision.model_copy(
-                update={
-                    "action": Action.handoff,
-                    "draft_reply": None,
-                    "handoff_note": redact_payment_details(
-                        f"{failed} {_honest_note(proposal, priority, notes)}"
-                    ),
-                    "reason": redact_payment_details(
-                        f"{proposal.reason} Policy: reply failed verification, handed off."
-                    ),
-                }
-            )
-
-    if code_language and proposal.language is not code_language:
-        notes.append(
-            f"language set to {code_language.value} by code (model said {proposal.language.value})"
-        )
-    return DecisionResult(
-        decision=decision,
-        faq_ids=proposal.faq_ids,
-        rule_hits=rule_names,
-        policy_notes=notes,
-        language_source="code" if code_language else "model",
-        reason_language=reason_language,
-        name_removed=name_removed,
-        verifier=verified,
-        tokens_in=usage.tokens_in,
-        tokens_out=usage.tokens_out,
-        cost_usd=usage.cost_usd,
-    )
+    return decision, notes, name_removed
 
 
 def _apply_policy(

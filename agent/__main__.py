@@ -148,6 +148,7 @@ def _log_entry(
         language_source=result.language_source,
         reason_language=result.reason_language,
         name_removed=result.name_removed,
+        promise_phrase=result.promise_phrase,
         tokens_in=result.tokens_in,
         tokens_out=result.tokens_out,
         cost_usd=result.cost_usd,

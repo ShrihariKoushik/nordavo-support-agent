@@ -221,6 +221,52 @@ def commitment_phrases(text: str) -> list[str]:
     return [match.group() for match in _COMMITMENT_RE.finditer(text)]
 
 
+# --- Promises in a reply to the customer ------------------------------------------------------
+
+# Only wording about THIS customer's request ("your request is on the roadmap", "we have
+# forwarded it"). The FAQ's general wording ("feature requests go on our roadmap") must pass.
+_REQUEST = r"(?:verzoek|idee|suggestie|aanvraag|wens|feedback)"
+_REQUEST_EN = r"(?:request|idea|suggestion|feedback|wish)"
+_REQUEST_DE = r"(?:anfrage|idee|vorschlag|wunsch|feedback)"
+_PROMISE_RE = re.compile(
+    r"(?<!\w)(?:"
+    # nl
+    rf"(?:je|jouw|uw)\s+{_REQUEST}\s+(?:staat|is|wordt|werd|komt)|"
+    rf"(?:je|jouw|uw)\s+{_REQUEST}\s+(?:\w+\s+){{0,3}}(?:toegevoegd|genoteerd|doorgestuurd|meegenomen)|"
+    r"(?:is|wordt|werd)\s+toegevoegd\s+aan\s+(?:onze|de)\s+(?:\w+\s+)?roadmap|"
+    r"hebben\s+(?:we|wij)\s+(?:\w+\s+){0,3}(?:genoteerd|doorgestuurd|doorgegeven|toegevoegd)|"
+    r"(?:we|wij)\s+hebben\s+(?:\w+\s+){0,3}(?:genoteerd|doorgestuurd|doorgegeven|toegevoegd)|"
+    r"doorgestuurd|doorgezet|"
+    # "we voegen deze toe" / "we zetten het op": a pronoun means THIS customer's request
+    r"(?:we|wij|en)\s+(?:voegen|zetten|plaatsen|nemen)\s+(?:deze|dit|het|hem|die)\s+(?:\w+\s+){0,4}"
+    r"(?:toe|op|mee)|"
+    r"(?:we|wij)\s+werken\s+(?:er\s+)?(?:aan|eraan)|"
+    r"(?:we|wij)\s+(?:gaan|zullen)\s+(?:\w+\s+){0,3}(?:bekijken|oppakken|oplossen|onderzoeken|toevoegen)|"
+    # en
+    rf"your\s+{_REQUEST_EN}\s+(?:is|has\s+been|was|will\s+be)|"
+    r"(?:we|i|and)\s*(?:'ll\s+|will\s+)?(?:add|put|place|log)\s+(?:it|this|them|your\s+\w+)\s+(?:to|on|in)|"
+    rf"(?:it|this)\s+(?:has\s+been|is\s+now)\s+(?:added|forwarded|noted|logged|passed\s+on|registered)|"
+    r"(?:we|i)\s*(?:have|'ve)\s+(?:\w+\s+){0,2}(?:noted|forwarded|passed\s+on|added|logged|registered|escalated)|"
+    r"(?:we|i)\s*(?:are|'re)\s+(?:already\s+|currently\s+|now\s+)?(?:working\s+on|looking\s+into)|"
+    r"(?:we|i)\s*(?:will|'ll)\s+(?:\w+\s+){0,2}(?:look\s+into|fix|add|forward|pass\s+(?:it|this)\s+on|get\s+back)|"
+    # de
+    rf"(?:ihr|ihre|dein|deine)\s+{_REQUEST_DE}\s+(?:\w+\s+){{0,3}}(?:ist|wurde|wird|steht)|"
+    r"wir\s+haben\s+(?:\w+\s+){0,3}(?:notiert|weitergeleitet|aufgenommen|hinzugef(?:ü|ue)gt|vermerkt)|"
+    r"weitergeleitet|"
+    r"(?:wir|und)\s+(?:f(?:ü|ue)gen|nehmen|setzen)\s+(?:sie|es|ihn|diese|diesen|dies|ihre\s+\w+|deine\s+\w+)\s+"
+    r"(?:\w+\s+){0,4}(?:hinzu|auf)|"
+    r"wir\s+arbeiten\s+(?:bereits\s+|schon\s+)?(?:daran|an)|"
+    r"wir\s+werden\s+(?:\w+\s+){0,3}(?:pr(?:ü|ue)fen|beheben|hinzuf(?:ü|ue)gen|weiterleiten|umsetzen)"
+    r")(?!\w)",
+    re.IGNORECASE,
+)
+
+
+def promise_phrases(text: str) -> list[str]:
+    """Phrases in a reply that tell the customer something was done or decided for them."""
+    return [match.group() for match in _PROMISE_RE.finditer(" ".join(text.split()))]
+
+
 # --- Names in a reply's greeting -------------------------------------------------------------
 
 NEUTRAL_GREETING = {"nl": "Hallo,", "en": "Hello,", "de": "Hallo,"}

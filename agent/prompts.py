@@ -165,6 +165,9 @@ ENGLISH_FIELDS_CORRECTION = (
     'Correction: "reason", "handoff_note" and "question_summary" MUST be written in English, '
     "even though the ticket is not. Only draft_reply is in the customer's language."
 )
+PROMISE_CORRECTION = (
+    "Do not say anything was done or decided for this customer; only state what the FAQ says."
+)
 BACK_TRANSLATION_CORRECTION = (
     "The back_translation MUST be in English; do not copy the draft."
 )

@@ -9,6 +9,7 @@ from agent.rules import (
     commitment_phrases,
     forced_handoff_hits,
     is_empty,
+    promise_phrases,
     remove_invented_name,
     redact_payment_details,
 )
@@ -241,3 +242,68 @@ def test_only_the_first_line_is_checked() -> None:
 
 Vraag het aan Jan, de manager."""
     assert remove_invented_name(draft, TICKET_WITHOUT_NAME, "nl") == (draft, None)
+
+
+# --- Promises to the customer in replies -------------------------------------------------------
+
+F10_IN_THREE_LANGUAGES = [
+    "We read every idea. Feature requests go on our public roadmap at roadmap.roosterly.nl, where "
+    "you can vote on ideas. We cannot promise a delivery date for individual requests.",
+    "We lezen elk idee. Feature requests komen op onze publieke roadmap op roadmap.roosterly.nl, "
+    "waar je kunt stemmen op ideeën. We kunnen geen leverdatum beloven voor individuele verzoeken.",
+    "We lezen elk idee en plaatsen feature requests op onze publieke roadmap.",
+    "Wir lesen jede Idee. Feature-Wünsche kommen auf unsere öffentliche Roadmap unter "
+    "roadmap.roosterly.nl, wo Sie über Ideen abstimmen können. Wir können kein Lieferdatum für "
+    "einzelne Anfragen versprechen.",
+]
+
+
+@pytest.mark.parametrize("text", F10_IN_THREE_LANGUAGES)
+def test_faq_wording_about_feature_requests_is_not_a_promise(text: str) -> None:
+    assert promise_phrases(text) == []
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Zodra de medewerker is toegevoegd, krijgt hij een e-mail om de app te installeren.",
+        "Once the employee has been added, they get an email to install the app.",
+        "Your invoices are emailed on the 1st of every month.",
+    ],
+)
+def test_ordinary_faq_answers_are_not_promises(text: str) -> None:
+    assert promise_phrases(text) == []
+
+
+@pytest.mark.parametrize(
+    ("text", "phrase"),
+    [
+        ("We lezen elk idee en je verzoek staat op onze publieke roadmap.", "je verzoek staat"),
+        ("Uw suggestie is toegevoegd aan onze roadmap.", "Uw suggestie is"),
+        ("Bedankt! We hebben je idee genoteerd.", "We hebben je idee genoteerd"),
+        ("Ik heb het doorgestuurd naar het team.", "doorgestuurd"),
+        ("We werken eraan.", "We werken eraan"),
+        ("Your request is on our public roadmap.", "Your request is"),
+        ("We have noted your idea.", "We have noted"),
+        ("We are working on it.", "We are working on"),
+        ("Ihre Anfrage wurde notiert.", "Ihre Anfrage wurde"),
+        ("Wir arbeiten bereits daran.", "Wir arbeiten bereits daran"),
+    ],
+)
+def test_promises_about_this_customer_are_found(text: str, phrase: str) -> None:
+    assert promise_phrases(text)[0] == phrase
+
+
+@pytest.mark.parametrize(
+    ("text", "phrase"),
+    [
+        ("We lezen elke suggestie en voegen deze toe aan onze openbare roadmap.", "voegen deze toe"),
+        ("We zetten het op onze roadmap.", "We zetten het op"),
+        ("We read every idea and add it to our public roadmap.", "add it to"),
+        ("We'll put your suggestion on the roadmap.", "We'll put your suggestion on"),
+        ("Wir fügen sie unserer Roadmap hinzu.", "Wir fügen sie unserer Roadmap hinzu"),
+    ],
+)
+def test_pronoun_promises_about_this_request_are_found(text: str, phrase: str) -> None:
+    found = promise_phrases(text)
+    assert found and phrase.lower() in found[0].lower()

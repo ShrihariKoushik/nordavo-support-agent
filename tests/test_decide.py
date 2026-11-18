@@ -594,3 +594,48 @@ def test_code_detected_mismatch_still_fails_even_if_checker_says_match() -> None
     assert result.decision.action is Action.handoff
     assert "reply is in nl, ticket is in en" in (result.decision.handoff_note or "")
     assert result.verifier is not None and result.verifier.language_override is False
+
+
+# --- Promises to the customer: code decides, one redraft, then handoff --------------------------
+
+PROMISING_DRAFT = "Hallo, we lezen elk idee en je verzoek staat op onze publieke roadmap. Team Roosterly"
+CLEAN_DRAFT = "Hallo, we lezen elk idee en feature requests komen op onze publieke roadmap. Team Roosterly"
+
+
+def test_promise_in_draft_is_redrafted_once_and_stays_a_reply() -> None:
+    llm = ScriptedLlm(
+        [proposal(draft_reply=PROMISING_DRAFT), proposal(draft_reply=CLEAN_DRAFT)], [verify_ok()]
+    )
+    result = decide(ticket(), faq=FAQ, llm=llm, settings=SETTINGS)
+
+    assert [kind for kind, _ in llm.users] == ["decide", "decide", "verify"]
+    assert (
+        "Do not say anything was done or decided for this customer; only state what the FAQ says."
+        in llm.users[1][1]
+    )
+    assert result.decision.action is Action.reply
+    assert result.decision.draft_reply == CLEAN_DRAFT
+    assert result.promise_phrase == "je verzoek staat"
+    assert result.policy_notes[0] == "draft promised the customer something ('je verzoek staat'), redrafted"
+    assert result.tokens_in == 300  # draft + redraft + verify
+
+
+def test_promise_twice_hands_off_without_running_the_checker() -> None:
+    llm = ScriptedLlm([proposal(draft_reply=PROMISING_DRAFT)] * 2)
+    result = decide(ticket(), faq=FAQ, llm=llm, settings=SETTINGS)
+
+    assert [kind for kind, _ in llm.users] == ["decide", "decide"]
+    assert result.decision.action is Action.handoff
+    assert result.decision.draft_reply is None
+    note = result.decision.handoff_note or ""
+    assert note.startswith("A draft reply was written but NOT sent: it told the customer something")
+    assert "('je verzoek staat')" in note
+    assert result.promise_phrase == "je verzoek staat"
+
+
+def test_clean_draft_has_no_promise_phrase() -> None:
+    llm = ScriptedLlm([proposal(draft_reply=CLEAN_DRAFT)], [verify_ok()])
+    result = decide(ticket(), faq=FAQ, llm=llm, settings=SETTINGS)
+
+    assert result.promise_phrase is None
+    assert [kind for kind, _ in llm.users] == ["decide", "verify"]
