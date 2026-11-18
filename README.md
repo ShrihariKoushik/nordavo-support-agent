@@ -43,7 +43,10 @@ read-only checks).
 **Assumptions.** Handoff notes and `reason` are in English. A forced handoff is at least P2 (money,
 contract, GDPR); an injection ticket is exactly P2, whatever the ticket claims. Only empty tickets
 (decided in code) or spam with confidence ≥ 0.75 are closed. Labels have no FAQ field, so the eval
-reads the expected FAQ id from the label's reason text.
+reads the expected FAQ id from the label's reason text. Explaining how to upgrade a plan
+(F05, e.g. T023) is treated as a how-to, not a contract change: the agent changes nothing for the
+customer, it only points to the self-service setting. Cancellations, downgrades and other changes to
+the contract always go to a human.
 
 ## Reliability
 
