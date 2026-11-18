@@ -36,7 +36,7 @@ python -m pytest -q
    seed and temperature 0. About $0.11 per 100 tickets ($0.36 / $0.40 per 1M tokens in / out).
 
 **AI tools.** I started in Cursor and switched to Claude Code when I hit the Cursor limit. Both read
-`AGENTS.md` and `.cursor/rules`. A separate assistant reviewed each commit independently (tests, live
+`AGENTS.md` and `.cursor/rules`. A second AI assistant reviewed each commit independently (tests, live
 read-only checks).
 
 **Assumptions.** Handoff notes and `reason` are in English. A forced handoff is at least P2 (money,
@@ -51,8 +51,8 @@ GET timeout; a 429 waits for `Retry-After`. A 409 is never retried. If a POST lo
 agent GETs the ticket and posts again only if it is still open. A true 409 and "probably ours" are
 logged separately. An append-only journal (`state/journal.jsonl`) records `decided` before each POST
 and `posted` after it, so a re-run skips handled tickets and re-checks unfinished ones with a GET. A
-half-written last line is ignored. Card numbers (Luhn-checked) and IBANs are redacted in replies,
-notes and logs. Keys come only from the environment. Ticket text is wrapped as untrusted data and is
+half-written last line is ignored. Code redacts card numbers (Luhn-checked) and IBANs before anything
+is posted or logged. Keys come only from the environment. Ticket text is wrapped as untrusted data and is
 never followed as instructions.
 
 ## Eval and fix
