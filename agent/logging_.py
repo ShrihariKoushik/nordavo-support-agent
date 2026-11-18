@@ -29,19 +29,25 @@ class Outcome(StrEnum):
 
 
 class TicketLog(BaseModel):
-    """What we log for one ticket. No ticket subject, body, reply or note text."""
+    """What we log for one ticket. No ticket subject, body, reply or note text.
+
+    `reason` is the model's short classification reason; it is redacted like every string.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
     ticket_id: str
     outcome: Outcome
+    ts: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
     language: str | None = None
     category: str | None = None
     priority: str | None = None
     action: str | None = None
     confidence: float | None = None
+    reason: str | None = None
     faq_ids: list[str] = Field(default_factory=list)
     rule_hits: list[str] = Field(default_factory=list)
+    policy_notes: list[str] = Field(default_factory=list)
     verifier: str | None = None
     tokens_in: int = 0
     tokens_out: int = 0

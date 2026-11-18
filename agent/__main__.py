@@ -5,9 +5,12 @@ import sys
 import time
 from collections import Counter
 from collections.abc import Callable
+from functools import partial
 from itertools import islice
 
 from agent.config import ConfigError, load_settings
+from agent.decide import DecisionResult, decide
+from agent.faq import FaqError, load_faq
 from agent.helpdesk import (
     AlreadyHandled,
     AlreadyHandledAfterUncertainPost,
@@ -15,30 +18,20 @@ from agent.helpdesk import (
     HelpdeskError,
     OutcomeUnknown,
 )
+from agent.llm import LlmClient
 from agent.logging_ import Outcome, RunLog, TicketLog
-from agent.models import Action, Category, Decision, Language, Priority, Ticket
+from agent.models import Action, Decision, Ticket
+from agent.rules import redact_payment_details
 from agent.state import Event, Journal, Step
 
-DecideFn = Callable[[Ticket], Decision]
-
-
-def stub_decide(ticket: Ticket) -> Decision:
-    """Placeholder until decide.py exists: hand everything to a human."""
-    return Decision(
-        language=Language.en,
-        category=Category.other,
-        priority=Priority.P3,
-        reason="Stub decision while the pipeline is being built.",
-        action=Action.handoff,
-        handoff_note="stub",
-    )
+DecideFn = Callable[[Ticket], DecisionResult]
 
 
 def run_tickets(
     client: HelpdeskClient,
     journal: Journal,
     run_log: RunLog,
-    decide: DecideFn,
+    decide_fn: DecideFn,
     *,
     dry_run: bool = False,
     limit: int | None = None,
@@ -47,27 +40,29 @@ def run_tickets(
     counts: Counter[Outcome] = Counter()
     for ticket in islice(client.iter_open_tickets(), limit):
         started = time.monotonic()
-        decision: Decision | None = None
+        result: DecisionResult | None = None
         error: str | None = None
         try:
-            outcome, decision = _handle(client, journal, decide, ticket, dry_run=dry_run)
+            outcome, result = _handle(client, journal, decide_fn, ticket, dry_run=dry_run)
         except Exception as exc:  # noqa: BLE001 - logged per ticket, then the run continues
             outcome, error = Outcome.error, f"{type(exc).__name__}: {exc}"
-        entry = _log_entry(ticket.id, outcome, decision, error, started)
+        entry = _log_entry(ticket.id, outcome, result, error, started)
         run_log.write(entry)
         counts[outcome] += 1
         print(f"{ticket.id}  {entry.action or '-':8}  {outcome.value}")
+        if dry_run and result is not None:
+            _print_preview(result)
     return counts
 
 
 def _handle(
     client: HelpdeskClient,
     journal: Journal,
-    decide: DecideFn,
+    decide_fn: DecideFn,
     ticket: Ticket,
     *,
     dry_run: bool,
-) -> tuple[Outcome, Decision | None]:
+) -> tuple[Outcome, DecisionResult | None]:
     step = journal.next_step(ticket.id)
     if step is Step.skip:
         return Outcome.skipped, None
@@ -79,24 +74,25 @@ def _handle(
                 journal.record(ticket.id, Event.posted_probably)
             return Outcome.skipped, None
 
-    decision = decide(ticket)
+    result = decide_fn(ticket)
+    decision = result.decision
     if dry_run:
-        return Outcome.dry_run, decision
+        return Outcome.dry_run, result
 
     journal.record(ticket.id, Event.decided, action=decision.action.value)
     try:
         _post(client, ticket.id, decision)
     except AlreadyHandledAfterUncertainPost:  # must come before its parent AlreadyHandled
         journal.record(ticket.id, Event.posted_probably, action=decision.action.value)
-        return Outcome.posted_probably, decision
+        return Outcome.posted_probably, result
     except AlreadyHandled:
         journal.record(ticket.id, Event.already_handled, action=decision.action.value)
-        return Outcome.already_handled, decision
+        return Outcome.already_handled, result
     except OutcomeUnknown:
         journal.record(ticket.id, Event.outcome_unknown, action=decision.action.value)
-        return Outcome.outcome_unknown, decision
+        return Outcome.outcome_unknown, result
     journal.record(ticket.id, Event.posted, action=decision.action.value)
-    return Outcome.posted, decision
+    return Outcome.posted, result
 
 
 def _post(client: HelpdeskClient, ticket_id: str, decision: Decision) -> None:
@@ -111,23 +107,50 @@ def _post(client: HelpdeskClient, ticket_id: str, decision: Decision) -> None:
 def _log_entry(
     ticket_id: str,
     outcome: Outcome,
-    decision: Decision | None,
+    result: DecisionResult | None,
     error: str | None,
     started: float,
 ) -> TicketLog:
-    entry = TicketLog(
+    latency_ms = round((time.monotonic() - started) * 1000)
+    if result is None:
+        return TicketLog(ticket_id=ticket_id, outcome=outcome, error=error, latency_ms=latency_ms)
+    decision = result.decision
+    return TicketLog(
         ticket_id=ticket_id,
         outcome=outcome,
+        language=decision.language.value,
+        category=decision.category.value,
+        priority=decision.priority.value,
+        action=decision.action.value,
+        confidence=decision.confidence,
+        reason=decision.reason,
+        faq_ids=result.faq_ids,
+        rule_hits=result.rule_hits,
+        policy_notes=result.policy_notes,
+        tokens_in=result.tokens_in,
+        tokens_out=result.tokens_out,
+        cost_usd=result.cost_usd,
+        latency_ms=latency_ms,
         error=error,
-        latency_ms=round((time.monotonic() - started) * 1000),
     )
-    if decision is not None:
-        entry.language = decision.language.value
-        entry.category = decision.category.value
-        entry.priority = decision.priority.value
-        entry.action = decision.action.value
-        entry.confidence = decision.confidence
-    return entry
+
+
+def _print_preview(result: DecisionResult) -> None:
+    """Dry run only: show the text that would be sent, so a person can review it."""
+    decision = result.decision
+    print(
+        f"    {decision.language.value} {decision.category.value} {decision.priority.value}"
+        f" conf={decision.confidence} faq={result.faq_ids} rules={result.rule_hits}"
+    )
+    print(f"    reason: {decision.reason}")
+    if result.policy_notes:
+        print(f"    policy: {'; '.join(result.policy_notes)}")
+    text = decision.draft_reply or decision.handoff_note
+    if text:
+        label = "draft_reply" if decision.draft_reply else "handoff_note"
+        body = redact_payment_details(text).replace("\n", "\n      ")
+        print(f"    {label}:\n      {body}")
+    print()
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -160,9 +183,16 @@ def main(argv: list[str] | None = None) -> int:
                 if archived:
                     print(f"Journal archived to {archived}")
                 return 0
+            try:
+                faq = load_faq()
+            except FaqError as exc:
+                print(f"FAQ error: {exc}", file=sys.stderr)
+                return 2
+            llm = LlmClient(settings)
+            decide_fn = partial(decide, faq=faq, llm=llm, settings=settings)
             run_log = RunLog()
             counts = run_tickets(
-                client, journal, run_log, stub_decide, dry_run=args.dry_run, limit=args.limit
+                client, journal, run_log, decide_fn, dry_run=args.dry_run, limit=args.limit
             )
     except HelpdeskError as exc:
         print(f"Helpdesk error: {exc}", file=sys.stderr)
@@ -170,6 +200,10 @@ def main(argv: list[str] | None = None) -> int:
 
     summary = ", ".join(f"{name.value}={count}" for name, count in sorted(counts.items()))
     print(f"Done: {summary or 'no open tickets'}. Log: {run_log.path}")
+    print(
+        f"LLM: {llm.total.tokens_in} tokens in, {llm.total.tokens_out} out, "
+        f"${llm.total.cost_usd:.4f}"
+    )
     failed = counts[Outcome.error] + counts[Outcome.outcome_unknown]
     return 1 if failed else 0
 

@@ -6,12 +6,26 @@ from pathlib import Path
 
 import httpx
 
-from agent.__main__ import run_tickets, stub_decide
+from agent.__main__ import run_tickets
 from agent.config import Settings
+from agent.decide import DecisionResult
 from agent.helpdesk import HelpdeskClient
 from agent.logging_ import Outcome, RunLog
 from agent.models import Decision, Ticket
 from agent.state import Event, Journal, Step
+
+
+def handoff_decide(ticket: Ticket) -> DecisionResult:
+    """Stands in for decide(): always a handoff, no model."""
+    decision = Decision(
+        language="en",
+        category="other",
+        priority="P3",
+        reason="Test decision.",
+        action="handoff",
+        handoff_note="test",
+    )
+    return DecisionResult(decision=decision, rule_hits=["legal_threat"], tokens_in=10, cost_usd=0.001)
 
 
 class FakeHelpdesk:
@@ -74,7 +88,7 @@ def _run(
     fake: FakeHelpdesk,
     tmp_path: Path,
     *,
-    decide: Callable[[Ticket], Decision] = stub_decide,
+    decide: Callable[[Ticket], DecisionResult] = handoff_decide,
     dry_run: bool = False,
 ) -> tuple[dict[Outcome, int], list[dict[str, object]]]:
     run_log = RunLog(tmp_path / "logs")
@@ -98,6 +112,10 @@ def test_fresh_tickets_are_journaled_and_posted_once(tmp_path: Path) -> None:
     events = [e["event"] for e in Journal(tmp_path / "journal.jsonl").events("T1")]
     assert events == ["decided", "posted"]
     assert lines[0]["action"] == "handoff" and lines[0]["outcome"] == "posted"
+    assert lines[0]["reason"] == "Test decision."
+    assert lines[0]["rule_hits"] == ["legal_threat"]
+    assert lines[0]["tokens_in"] == 10 and lines[0]["cost_usd"] == 0.001
+    assert lines[0]["ts"]
     assert "body" not in lines[0] and "subject" not in lines[0]
 
 
@@ -172,10 +190,10 @@ def test_real_409_is_recorded_as_already_handled(tmp_path: Path) -> None:
 def test_one_failing_ticket_does_not_stop_the_run(tmp_path: Path) -> None:
     fake = FakeHelpdesk(["T1", "T2"])
 
-    def decide(ticket: Ticket) -> Decision:
+    def decide(ticket: Ticket) -> DecisionResult:
         if ticket.id == "T1":
             raise RuntimeError("model fell over")
-        return stub_decide(ticket)
+        return handoff_decide(ticket)
 
     counts, lines = _run(fake, tmp_path, decide=decide)
 
