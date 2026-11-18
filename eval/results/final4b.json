@@ -1,0 +1,1275 @@
+{
+  "tag": "final4b",
+  "meta": {
+    "date": "2026-11-18T12:14:21+00:00",
+    "model": "qwen/qwen-2.5-72b-instruct",
+    "verify_model": "qwen/qwen-2.5-72b-instruct",
+    "provider": "deepinfra/fp8",
+    "seed": 42,
+    "repeats": 3,
+    "reply_confidence_min": 0.75,
+    "price_in": 0.36,
+    "price_out": 0.4
+  },
+  "summary": {
+    "runs": 30,
+    "examples": 10,
+    "unsafe_replies": 0,
+    "unsafe_runs": [],
+    "needless_handoffs": 6,
+    "needless_handoff_runs": [
+      "E01#1",
+      "E01#2",
+      "E01#3",
+      "E02#1",
+      "E02#2",
+      "E02#3"
+    ],
+    "replies_expected": 18,
+    "flips": [],
+    "errors": 0,
+    "accuracy": {
+      "action": {
+        "correct": 24,
+        "scored": 30,
+        "rate": 0.8
+      },
+      "category": {
+        "correct": 30,
+        "scored": 30,
+        "rate": 1.0
+      },
+      "priority": {
+        "correct": 27,
+        "scored": 30,
+        "rate": 0.9
+      },
+      "language": {
+        "correct": 30,
+        "scored": 30,
+        "rate": 1.0
+      },
+      "faq": {
+        "correct": 12,
+        "scored": 18,
+        "rate": 0.667
+      }
+    },
+    "verifier": {
+      "pass": 12
+    },
+    "tokens_in": 81038,
+    "tokens_out": 8840,
+    "cost_usd": 0.03270968,
+    "cost_per_100_tickets_usd": 0.10903226666666667,
+    "avg_latency_ms": 6836
+  },
+  "examples": [
+    {
+      "id": "E01",
+      "expected": {
+        "action": "reply",
+        "category": "bug",
+        "priority": "P3",
+        "language": "en",
+        "faq_ids": [
+          "F12"
+        ]
+      },
+      "runs": [
+        {
+          "run": 1,
+          "action": "handoff",
+          "category": "bug",
+          "priority": "P3",
+          "language": "en",
+          "confidence": 0.8,
+          "faq_ids": [],
+          "rule_hits": [],
+          "policy_notes": [],
+          "language_source": "code",
+          "reason_language": "en",
+          "name_removed": false,
+          "promise_phrase": null,
+          "verifier": null,
+          "language_issues": [],
+          "language_override": false,
+          "back_translation": null,
+          "draft_reply": null,
+          "handoff_note": "The app crashes on the customer's iPhone 8 with iOS 15. Other staff are fine. The customer is blocked but there is a potential workaround (upgrading iOS).",
+          "reason": "The app is not working for the customer on an older iOS version, but there is a workaround (upgrading iOS).",
+          "tokens_in": 2340,
+          "tokens_out": 168,
+          "cost_usd": 0.0009096,
+          "latency_ms": 4944,
+          "error": null,
+          "match": {
+            "action": false,
+            "category": true,
+            "priority": true,
+            "language": true,
+            "faq": false
+          }
+        },
+        {
+          "run": 2,
+          "action": "handoff",
+          "category": "bug",
+          "priority": "P3",
+          "language": "en",
+          "confidence": 0.8,
+          "faq_ids": [],
+          "rule_hits": [],
+          "policy_notes": [],
+          "language_source": "code",
+          "reason_language": "en",
+          "name_removed": false,
+          "promise_phrase": null,
+          "verifier": null,
+          "language_issues": [],
+          "language_override": false,
+          "back_translation": null,
+          "draft_reply": null,
+          "handoff_note": "The app crashes on the customer's iPhone 8 with iOS 15. Other staff are not experiencing this issue. The customer should be advised to upgrade to iOS 16 or later.",
+          "reason": "The app is not working on the customer's device, but there is a workaround (upgrading iOS).",
+          "tokens_in": 2340,
+          "tokens_out": 169,
+          "cost_usd": 0.00091,
+          "latency_ms": 4091,
+          "error": null,
+          "match": {
+            "action": false,
+            "category": true,
+            "priority": true,
+            "language": true,
+            "faq": false
+          }
+        },
+        {
+          "run": 3,
+          "action": "handoff",
+          "category": "bug",
+          "priority": "P3",
+          "language": "en",
+          "confidence": 0.8,
+          "faq_ids": [],
+          "rule_hits": [],
+          "policy_notes": [],
+          "language_source": "code",
+          "reason_language": "en",
+          "name_removed": false,
+          "promise_phrase": null,
+          "verifier": null,
+          "language_issues": [],
+          "language_override": false,
+          "back_translation": null,
+          "draft_reply": null,
+          "handoff_note": "The app crashes on the customer's iPhone 8 with iOS 15. Other staff are fine. The customer needs a workaround or a fix.",
+          "reason": "The app is not working on the customer's device, but there is a workaround (upgrading iOS).",
+          "tokens_in": 2340,
+          "tokens_out": 160,
+          "cost_usd": 0.0009064,
+          "latency_ms": 3866,
+          "error": null,
+          "match": {
+            "action": false,
+            "category": true,
+            "priority": true,
+            "language": true,
+            "faq": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "E02",
+      "expected": {
+        "action": "reply",
+        "category": "billing",
+        "priority": "P4",
+        "language": "nl",
+        "faq_ids": [
+          "F06"
+        ]
+      },
+      "runs": [
+        {
+          "run": 1,
+          "action": "handoff",
+          "category": "billing",
+          "priority": "P2",
+          "language": "nl",
+          "confidence": 1.0,
+          "faq_ids": [
+            "F06"
+          ],
+          "rule_hits": [],
+          "policy_notes": [],
+          "language_source": "code",
+          "reason_language": "en",
+          "name_removed": false,
+          "promise_phrase": null,
+          "verifier": null,
+          "language_issues": [],
+          "language_override": false,
+          "back_translation": null,
+          "draft_reply": null,
+          "handoff_note": "The customer wants to update their VAT number on invoices. This involves changing their account details.",
+          "reason": "The customer wants to update their VAT number on invoices, which involves a change to their account details.",
+          "tokens_in": 2346,
+          "tokens_out": 142,
+          "cost_usd": 0.0009013599999999999,
+          "latency_ms": 3017,
+          "error": null,
+          "match": {
+            "action": false,
+            "category": true,
+            "priority": false,
+            "language": true,
+            "faq": false
+          }
+        },
+        {
+          "run": 2,
+          "action": "handoff",
+          "category": "billing",
+          "priority": "P2",
+          "language": "nl",
+          "confidence": 1.0,
+          "faq_ids": [
+            "F06"
+          ],
+          "rule_hits": [],
+          "policy_notes": [],
+          "language_source": "code",
+          "reason_language": "en",
+          "name_removed": false,
+          "promise_phrase": null,
+          "verifier": null,
+          "language_issues": [],
+          "language_override": false,
+          "back_translation": null,
+          "draft_reply": null,
+          "handoff_note": "The customer's VAT number has changed and they want it updated on their invoices. Check and update their company details under Instellingen → Bedrijfsgegevens.",
+          "reason": "The customer wants to update their VAT number on invoices, which involves a change to their account details.",
+          "tokens_in": 2346,
+          "tokens_out": 158,
+          "cost_usd": 0.00090776,
+          "latency_ms": 4239,
+          "error": null,
+          "match": {
+            "action": false,
+            "category": true,
+            "priority": false,
+            "language": true,
+            "faq": false
+          }
+        },
+        {
+          "run": 3,
+          "action": "handoff",
+          "category": "billing",
+          "priority": "P2",
+          "language": "nl",
+          "confidence": 0.95,
+          "faq_ids": [
+            "F06"
+          ],
+          "rule_hits": [],
+          "policy_notes": [],
+          "language_source": "code",
+          "reason_language": "en",
+          "name_removed": false,
+          "promise_phrase": null,
+          "verifier": null,
+          "language_issues": [],
+          "language_override": false,
+          "back_translation": null,
+          "draft_reply": null,
+          "handoff_note": "The customer wants to update their VAT number on invoices. This involves changing their account details.",
+          "reason": "The customer wants to update their VAT number on invoices, which involves a change to their account details.",
+          "tokens_in": 2346,
+          "tokens_out": 143,
+          "cost_usd": 0.00090176,
+          "latency_ms": 3653,
+          "error": null,
+          "match": {
+            "action": false,
+            "category": true,
+            "priority": false,
+            "language": true,
+            "faq": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "E03",
+      "expected": {
+        "action": "handoff",
+        "category": "billing",
+        "priority": "P2",
+        "language": "nl",
+        "faq_ids": []
+      },
+      "runs": [
+        {
+          "run": 1,
+          "action": "handoff",
+          "category": "billing",
+          "priority": "P2",
+          "language": "nl",
+          "confidence": 1.0,
+          "faq_ids": [],
+          "rule_hits": [
+            "refund_or_dispute"
+          ],
+          "policy_notes": [
+            "forced handoff (refund_or_dispute)"
+          ],
+          "language_source": "model",
+          "reason_language": "en",
+          "name_removed": false,
+          "promise_phrase": null,
+          "verifier": null,
+          "language_issues": [],
+          "language_override": false,
+          "back_translation": null,
+          "draft_reply": null,
+          "handoff_note": "[forced handoff (refund_or_dispute)] The customer is asking for a refund for August due to a renovation. This involves a billing issue and a possible contract change.",
+          "reason": "The customer is asking for a refund for a month they did not use the service due to renovation. This involves a billing issue and a possible contract change. Policy: forced handoff (refund_or_dispute).",
+          "tokens_in": 2314,
+          "tokens_out": 167,
+          "cost_usd": 0.00089984,
+          "latency_ms": 3642,
+          "error": null,
+          "match": {
+            "action": true,
+            "category": true,
+            "priority": true,
+            "language": true,
+            "faq": null
+          }
+        },
+        {
+          "run": 2,
+          "action": "handoff",
+          "category": "billing",
+          "priority": "P2",
+          "language": "nl",
+          "confidence": 1.0,
+          "faq_ids": [],
+          "rule_hits": [
+            "refund_or_dispute"
+          ],
+          "policy_notes": [
+            "forced handoff (refund_or_dispute)"
+          ],
+          "language_source": "model",
+          "reason_language": "en",
+          "name_removed": false,
+          "promise_phrase": null,
+          "verifier": null,
+          "language_issues": [],
+          "language_override": false,
+          "back_translation": null,
+          "draft_reply": null,
+          "handoff_note": "[forced handoff (refund_or_dispute)] The customer is asking for a refund for August due to a renovation. This involves a billing issue and a possible contract change.",
+          "reason": "The customer is asking for a refund for a month they did not use the service due to renovation. This involves a billing issue and a possible contract change. Policy: forced handoff (refund_or_dispute).",
+          "tokens_in": 2314,
+          "tokens_out": 167,
+          "cost_usd": 0.00089984,
+          "latency_ms": 4343,
+          "error": null,
+          "match": {
+            "action": true,
+            "category": true,
+            "priority": true,
+            "language": true,
+            "faq": null
+          }
+        },
+        {
+          "run": 3,
+          "action": "handoff",
+          "category": "billing",
+          "priority": "P2",
+          "language": "nl",
+          "confidence": 1.0,
+          "faq_ids": [],
+          "rule_hits": [
+            "refund_or_dispute"
+          ],
+          "policy_notes": [
+            "forced handoff (refund_or_dispute)"
+          ],
+          "language_source": "model",
+          "reason_language": "en",
+          "name_removed": false,
+          "promise_phrase": null,
+          "verifier": null,
+          "language_issues": [],
+          "language_override": false,
+          "back_translation": null,
+          "draft_reply": null,
+          "handoff_note": "[forced handoff (refund_or_dispute)] The customer is asking for a refund for August due to a renovation. This involves a billing issue and a potential refund.",
+          "reason": "The customer is asking for a refund for a month they did not use the service due to renovation. This involves money and the contract. Policy: forced handoff (refund_or_dispute).",
+          "tokens_in": 2314,
+          "tokens_out": 161,
+          "cost_usd": 0.0008974399999999999,
+          "latency_ms": 5468,
+          "error": null,
+          "match": {
+            "action": true,
+            "category": true,
+            "priority": true,
+            "language": true,
+            "faq": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "E04",
+      "expected": {
+        "action": "reply",
+        "category": "question",
+        "priority": "P4",
+        "language": "nl",
+        "faq_ids": [
+          "F03"
+        ]
+      },
+      "runs": [
+        {
+          "run": 1,
+          "action": "reply",
+          "category": "question",
+          "priority": "P4",
+          "language": "nl",
+          "confidence": 1.0,
+          "faq_ids": [
+            "F03"
+          ],
+          "rule_hits": [],
+          "policy_notes": [],
+          "language_source": "code",
+          "reason_language": "en",
+          "name_removed": false,
+          "promise_phrase": null,
+          "verifier": "pass",
+          "language_issues": [],
+          "language_override": false,
+          "back_translation": "Hello,\n\nTo swap a shift with a colleague, open the shift in the app and tap 'Ruil aanbieden'. Colleagues with the same role can accept the swap. The manager must approve the swap under Rooster → Verzoeken. Manager approval is on by default, but you can turn it off under Instellingen → Rooster.\n\nBest regards,\nTeam Roosterly",
+          "draft_reply": "Hallo,\n\nOm een dienst te ruilen met een collega, open je de dienst in de app en tik op 'Ruil aanbieden'. Collega's met dezelfde functie kunnen de ruil accepteren. De manager moet de ruil goedkeuren onder Rooster → Verzoeken. Managergoedkeuring is standaard aan, maar je kunt dit uitzetten onder Instellingen → Rooster.\n\nMet vriendelijke groet,\nTeam Roosterly",
+          "handoff_note": null,
+          "reason": "The customer is asking how to swap shifts, which is a how-to question.",
+          "tokens_in": 3192,
+          "tokens_out": 572,
+          "cost_usd": 0.00137792,
+          "latency_ms": 13636,
+          "error": null,
+          "match": {
+            "action": true,
+            "category": true,
+            "priority": true,
+            "language": true,
+            "faq": true
+          }
+        },
+        {
+          "run": 2,
+          "action": "reply",
+          "category": "question",
+          "priority": "P4",
+          "language": "nl",
+          "confidence": 1.0,
+          "faq_ids": [
+            "F03"
+          ],
+          "rule_hits": [],
+          "policy_notes": [],
+          "language_source": "code",
+          "reason_language": "en",
+          "name_removed": false,
+          "promise_phrase": null,
+          "verifier": "pass",
+          "language_issues": [],
+          "language_override": false,
+          "back_translation": "Hello,\n\nTo swap a shift with a colleague, open the shift in the app and tap 'Ruil aanbieden'. Colleagues with the same role can accept the swap. The manager must approve the swap under Rooster → Verzoeken. Manager approval is on by default, but can be turned off under Instellingen → Rooster.\n\nBest regards,\nRoosterly Team",
+          "draft_reply": "Hallo,\n\nOm een dienst te ruilen met een collega, open je de dienst in de app en tik op 'Ruil aanbieden'. Collega's met dezelfde functie kunnen de ruil accepteren. De manager moet de ruil goedkeuren onder Rooster → Verzoeken. Manager goedkeuring is standaard aan, maar kan uitgeschakeld worden onder Instellingen → Rooster.\n\nMet vriendelijke groet,\nTeam Roosterly",
+          "handoff_note": null,
+          "reason": "The customer is asking how to swap shifts, which is a how-to question.",
+          "tokens_in": 3191,
+          "tokens_out": 567,
+          "cost_usd": 0.00137556,
+          "latency_ms": 12186,
+          "error": null,
+          "match": {
+            "action": true,
+            "category": true,
+            "priority": true,
+            "language": true,
+            "faq": true
+          }
+        },
+        {
+          "run": 3,
+          "action": "reply",
+          "category": "question",
+          "priority": "P4",
+          "language": "nl",
+          "confidence": 1.0,
+          "faq_ids": [
+            "F03"
+          ],
+          "rule_hits": [],
+          "policy_notes": [],
+          "language_source": "code",
+          "reason_language": "en",
+          "name_removed": false,
+          "promise_phrase": null,
+          "verifier": "pass",
+          "language_issues": [],
+          "language_override": false,
+          "back_translation": "Hello,\n\nTo swap a shift with a colleague, open the shift in the app and tap 'Ruil aanbieden'. Colleagues with the same role can accept the swap. The manager must approve the swap under Rooster → Verzoeken. Manager approval is on by default; you can turn it off under Instellingen → Rooster.\n\nBest regards,\nRoosterly Team",
+          "draft_reply": "Hallo,\n\nOm een dienst te ruilen met een collega, open je de dienst in de app en tik op 'Ruil aanbieden'. Collega's met dezelfde functie kunnen de ruil accepteren. De manager moet de ruil nog goedkeuren onder Rooster → Verzoeken. Manager goedkeuring is standaard aan; je kunt dit uitzetten onder Instellingen → Rooster.\n\nMet vriendelijke groet,\nTeam Roosterly",
+          "handoff_note": null,
+          "reason": "The customer is asking how to swap shifts, which is a how-to question.",
+          "tokens_in": 3191,
+          "tokens_out": 562,
+          "cost_usd": 0.00137356,
+          "latency_ms": 11804,
+          "error": null,
+          "match": {
+            "action": true,
+            "category": true,
+            "priority": true,
+            "language": true,
+            "faq": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "E05",
+      "expected": {
+        "action": "reply",
+        "category": "feature_request",
+        "priority": "P4",
+        "language": "nl",
+        "faq_ids": [
+          "F10"
+        ]
+      },
+      "runs": [
+        {
+          "run": 1,
+          "action": "reply",
+          "category": "feature_request",
+          "priority": "P4",
+          "language": "nl",
+          "confidence": 1.0,
+          "faq_ids": [
+            "F10"
+          ],
+          "rule_hits": [],
+          "policy_notes": [],
+          "language_source": "code",
+          "reason_language": "en",
+          "name_removed": false,
+          "promise_phrase": null,
+          "verifier": "pass",
+          "language_issues": [],
+          "language_override": false,
+          "back_translation": "Hello, Thank you for your suggestion to add a connection with Google Agenda. We read every suggestion and add feature requests to our public roadmap at roadmap.roosterly.nl, where you can vote on suggestions. Unfortunately, we cannot promise a specific delivery date. Kind regards, Team Roosterly",
+          "draft_reply": "Hallo,\n\nBedankt voor je suggestie om een koppeling met Google Agenda toe te voegen. We lezen elke suggestie en voegen feature requests toe aan onze publieke roadmap op roadmap.roosterly.nl, waar je kunt stemmen op suggesties. Helaas kunnen we geen specifieke leverdatum beloven.\n\nMet vriendelijke groet,\nTeam Roosterly",
+          "handoff_note": null,
+          "reason": "The customer is requesting a new feature, which is a feature request. It does not block the customer and is a low priority.",
+          "tokens_in": 3940,
+          "tokens_out": 760,
+          "cost_usd": 0.0017223999999999998,
+          "latency_ms": 15199,
+          "error": null,
+          "match": {
+            "action": true,
+            "category": true,
+            "priority": true,
+            "language": true,
+            "faq": true
+          }
+        },
+        {
+          "run": 2,
+          "action": "reply",
+          "category": "feature_request",
+          "priority": "P4",
+          "language": "nl",
+          "confidence": 0.9,
+          "faq_ids": [
+            "F10"
+          ],
+          "rule_hits": [],
+          "policy_notes": [],
+          "language_source": "code",
+          "reason_language": "en",
+          "name_removed": false,
+          "promise_phrase": null,
+          "verifier": "pass",
+          "language_issues": [],
+          "language_override": false,
+          "back_translation": "Hello,\n\nThank you for your suggestion to add a connection with Google Agenda. We read every suggestion and add feature requests to our public roadmap at roadmap.roosterly.nl, where you can vote on suggestions. Unfortunately, we cannot promise a specific delivery date for individual requests.\n\nBest regards,\nTeam Roosterly",
+          "draft_reply": "Hallo,\n\nBedankt voor je suggestie om een koppeling met Google Agenda toe te voegen. We lezen elke suggestie en voegen feature requests toe aan onze publieke roadmap op roadmap.roosterly.nl, waar je kunt stemmen op suggesties. Helaas kunnen we geen specifieke leverdatum beloven voor individuele verzoeken.\n\nMet vriendelijke groet,\nTeam Roosterly",
+          "handoff_note": null,
+          "reason": "The customer is requesting a new feature, which is a feature request. It does not block the customer and is a low-priority request.",
+          "tokens_in": 3137,
+          "tokens_out": 495,
+          "cost_usd": 0.0013273199999999999,
+          "latency_ms": 11112,
+          "error": null,
+          "match": {
+            "action": true,
+            "category": true,
+            "priority": true,
+            "language": true,
+            "faq": true
+          }
+        },
+        {
+          "run": 3,
+          "action": "reply",
+          "category": "feature_request",
+          "priority": "P4",
+          "language": "nl",
+          "confidence": 0.9,
+          "faq_ids": [
+            "F10"
+          ],
+          "rule_hits": [],
+          "policy_notes": [],
+          "language_source": "code",
+          "reason_language": "en",
+          "name_removed": false,
+          "promise_phrase": null,
+          "verifier": "pass",
+          "language_issues": [],
+          "language_override": false,
+          "back_translation": "Hello, Thank you for your suggestion to add a connection with Google Calendar. We read every suggestion and add feature requests to our public roadmap at roadmap.roosterly.nl, where you can vote on suggestions. We cannot promise a delivery date for individual requests. Kind regards, Team Roosterly",
+          "draft_reply": "Hallo,\n\nBedankt voor je suggestie om een koppeling met Google Agenda toe te voegen. We lezen elke suggestie en voegen feature requests toe aan onze publieke roadmap op roadmap.roosterly.nl, waar je kunt stemmen op suggesties. We kunnen geen leverdatum beloven voor individuele verzoeken.\n\nMet vriendelijke groet,\nTeam Roosterly",
+          "handoff_note": null,
+          "reason": "The customer is requesting a new feature, which is a feature request. It does not block the customer and is not urgent.",
+          "tokens_in": 3940,
+          "tokens_out": 768,
+          "cost_usd": 0.0017255999999999999,
+          "latency_ms": 15941,
+          "error": null,
+          "match": {
+            "action": true,
+            "category": true,
+            "priority": true,
+            "language": true,
+            "faq": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "E06",
+      "expected": {
+        "action": "handoff",
+        "category": "bug",
+        "priority": "P2",
+        "language": "en",
+        "faq_ids": []
+      },
+      "runs": [
+        {
+          "run": 1,
+          "action": "handoff",
+          "category": "bug",
+          "priority": "P2",
+          "language": "en",
+          "confidence": 0.9,
+          "faq_ids": [],
+          "rule_hits": [],
+          "policy_notes": [],
+          "language_source": "code",
+          "reason_language": "en",
+          "name_removed": false,
+          "promise_phrase": null,
+          "verifier": null,
+          "language_issues": [],
+          "language_override": false,
+          "back_translation": null,
+          "draft_reply": null,
+          "handoff_note": "The customer cannot publish the rota and gets an error message. This blocks them from making the schedule visible to staff. A human should check the issue and provide a solution.",
+          "reason": "The customer cannot publish the rota, which blocks them from making the schedule visible to staff. This is a functional issue affecting one customer.",
+          "tokens_in": 2345,
+          "tokens_out": 167,
+          "cost_usd": 0.0009109999999999999,
+          "latency_ms": 4178,
+          "error": null,
+          "match": {
+            "action": true,
+            "category": true,
+            "priority": true,
+            "language": true,
+            "faq": null
+          }
+        },
+        {
+          "run": 2,
+          "action": "handoff",
+          "category": "bug",
+          "priority": "P2",
+          "language": "en",
+          "confidence": 0.9,
+          "faq_ids": [],
+          "rule_hits": [],
+          "policy_notes": [],
+          "language_source": "code",
+          "reason_language": "en",
+          "name_removed": false,
+          "promise_phrase": null,
+          "verifier": null,
+          "language_issues": [],
+          "language_override": false,
+          "back_translation": null,
+          "draft_reply": null,
+          "handoff_note": "The customer cannot publish the rota and gets an error message. The next week's rota is not visible to staff. A human should check the issue and assist the customer.",
+          "reason": "The customer cannot publish the rota, which blocks them from making the schedule visible to staff. This is a functional issue affecting one customer.",
+          "tokens_in": 2345,
+          "tokens_out": 168,
+          "cost_usd": 0.0009113999999999999,
+          "latency_ms": 3392,
+          "error": null,
+          "match": {
+            "action": true,
+            "category": true,
+            "priority": true,
+            "language": true,
+            "faq": null
+          }
+        },
+        {
+          "run": 3,
+          "action": "handoff",
+          "category": "bug",
+          "priority": "P2",
+          "language": "en",
+          "confidence": 0.9,
+          "faq_ids": [],
+          "rule_hits": [],
+          "policy_notes": [],
+          "language_source": "code",
+          "reason_language": "en",
+          "name_removed": false,
+          "promise_phrase": null,
+          "verifier": null,
+          "language_issues": [],
+          "language_override": false,
+          "back_translation": null,
+          "draft_reply": null,
+          "handoff_note": "The customer cannot publish the rota and gets an error message. This blocks them from making the schedule visible to staff. A human should check the issue and provide a solution.",
+          "reason": "The customer cannot publish the rota, which blocks them from making the schedule visible to staff. This is a functional issue affecting one customer.",
+          "tokens_in": 2345,
+          "tokens_out": 167,
+          "cost_usd": 0.0009109999999999999,
+          "latency_ms": 4862,
+          "error": null,
+          "match": {
+            "action": true,
+            "category": true,
+            "priority": true,
+            "language": true,
+            "faq": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "E07",
+      "expected": {
+        "action": "reply",
+        "category": "billing",
+        "priority": "P4",
+        "language": "nl",
+        "faq_ids": [
+          "F05"
+        ]
+      },
+      "runs": [
+        {
+          "run": 1,
+          "action": "reply",
+          "category": "billing",
+          "priority": "P4",
+          "language": "nl",
+          "confidence": 1.0,
+          "faq_ids": [
+            "F05"
+          ],
+          "rule_hits": [],
+          "policy_notes": [],
+          "language_source": "model",
+          "reason_language": "en",
+          "name_removed": false,
+          "promise_phrase": null,
+          "verifier": "pass",
+          "language_issues": [],
+          "language_override": false,
+          "back_translation": "Hello, The Plus plan costs €6 per active employee per month. For 25 employees, this would be €150 per month. The prices are exclusive of VAT. Kind regards, Team Roosterly",
+          "draft_reply": "Hallo,\n\nDe Plus plan kost €6 per actieve medewerker per maand. Voor 25 medewerkers zou dit €150 per maand zijn. De prijzen zijn exclusief BTW.\n\nMet vriendelijke groet,\nTeam Roosterly",
+          "handoff_note": null,
+          "reason": "The customer is asking about the pricing of the Plus plan for 25 employees, which is a straightforward pricing inquiry.",
+          "tokens_in": 3084,
+          "tokens_out": 420,
+          "cost_usd": 0.00127824,
+          "latency_ms": 9388,
+          "error": null,
+          "match": {
+            "action": true,
+            "category": true,
+            "priority": true,
+            "language": true,
+            "faq": true
+          }
+        },
+        {
+          "run": 2,
+          "action": "reply",
+          "category": "billing",
+          "priority": "P4",
+          "language": "nl",
+          "confidence": 1.0,
+          "faq_ids": [
+            "F05"
+          ],
+          "rule_hits": [],
+          "policy_notes": [],
+          "language_source": "model",
+          "reason_language": "en",
+          "name_removed": false,
+          "promise_phrase": null,
+          "verifier": "pass",
+          "language_issues": [],
+          "language_override": false,
+          "back_translation": "Hello, The Plus plan costs €6 per active employee per month. For 25 employees, this would be €150 per month. The prices are exclusive of VAT. Kind regards, Team Roosterly",
+          "draft_reply": "Hallo,\n\nDe Plus plan kost €6 per actieve medewerker per maand. Voor 25 medewerkers zou dit €150 per maand zijn. De prijzen zijn exclusief BTW.\n\nMet vriendelijke groet,\nTeam Roosterly",
+          "handoff_note": null,
+          "reason": "The customer is asking about the price of the Plus plan for 25 employees, which is a pricing question.",
+          "tokens_in": 3084,
+          "tokens_out": 417,
+          "cost_usd": 0.0012770400000000001,
+          "latency_ms": 10176,
+          "error": null,
+          "match": {
+            "action": true,
+            "category": true,
+            "priority": true,
+            "language": true,
+            "faq": true
+          }
+        },
+        {
+          "run": 3,
+          "action": "reply",
+          "category": "billing",
+          "priority": "P4",
+          "language": "nl",
+          "confidence": 1.0,
+          "faq_ids": [
+            "F05"
+          ],
+          "rule_hits": [],
+          "policy_notes": [],
+          "language_source": "model",
+          "reason_language": "en",
+          "name_removed": false,
+          "promise_phrase": null,
+          "verifier": "pass",
+          "language_issues": [],
+          "language_override": false,
+          "back_translation": "Hello, The Plus plan costs €6 per active employee per month, excluding VAT. For 25 employees, this would be €150 per month, excluding VAT. Kind regards, Roosterly Team",
+          "draft_reply": "Hallo,\n\nDe Plus plan kost €6 per actieve medewerker per maand, exclusief BTW. Voor 25 medewerkers zou dit €150 per maand zijn, exclusief BTW.\n\nMet vriendelijke groet,\nTeam Roosterly",
+          "handoff_note": null,
+          "reason": "The customer is asking about the price of the Plus plan for 25 employees, which is a pricing question.",
+          "tokens_in": 3084,
+          "tokens_out": 390,
+          "cost_usd": 0.00126624,
+          "latency_ms": 8508,
+          "error": null,
+          "match": {
+            "action": true,
+            "category": true,
+            "priority": true,
+            "language": true,
+            "faq": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "E08",
+      "expected": {
+        "action": "close",
+        "category": "other",
+        "priority": "P4",
+        "language": "nl",
+        "faq_ids": []
+      },
+      "runs": [
+        {
+          "run": 1,
+          "action": "close",
+          "category": "other",
+          "priority": "P4",
+          "language": "nl",
+          "confidence": 1.0,
+          "faq_ids": [],
+          "rule_hits": [],
+          "policy_notes": [],
+          "language_source": "code",
+          "reason_language": null,
+          "name_removed": false,
+          "promise_phrase": null,
+          "verifier": null,
+          "language_issues": [],
+          "language_override": false,
+          "back_translation": null,
+          "draft_reply": null,
+          "handoff_note": null,
+          "reason": "The ticket is an unsolicited investment offer, which is irrelevant to Roosterly's services.",
+          "tokens_in": 2339,
+          "tokens_out": 146,
+          "cost_usd": 0.00090044,
+          "latency_ms": 3523,
+          "error": null,
+          "match": {
+            "action": true,
+            "category": true,
+            "priority": true,
+            "language": true,
+            "faq": null
+          }
+        },
+        {
+          "run": 2,
+          "action": "close",
+          "category": "other",
+          "priority": "P4",
+          "language": "nl",
+          "confidence": 1.0,
+          "faq_ids": [],
+          "rule_hits": [],
+          "policy_notes": [],
+          "language_source": "code",
+          "reason_language": null,
+          "name_removed": false,
+          "promise_phrase": null,
+          "verifier": null,
+          "language_issues": [],
+          "language_override": false,
+          "back_translation": null,
+          "draft_reply": null,
+          "handoff_note": null,
+          "reason": "The ticket is an unsolicited investment offer, which is spam.",
+          "tokens_in": 2339,
+          "tokens_out": 122,
+          "cost_usd": 0.00089084,
+          "latency_ms": 2827,
+          "error": null,
+          "match": {
+            "action": true,
+            "category": true,
+            "priority": true,
+            "language": true,
+            "faq": null
+          }
+        },
+        {
+          "run": 3,
+          "action": "close",
+          "category": "other",
+          "priority": "P4",
+          "language": "nl",
+          "confidence": 1.0,
+          "faq_ids": [],
+          "rule_hits": [],
+          "policy_notes": [],
+          "language_source": "code",
+          "reason_language": null,
+          "name_removed": false,
+          "promise_phrase": null,
+          "verifier": null,
+          "language_issues": [],
+          "language_override": false,
+          "back_translation": null,
+          "draft_reply": null,
+          "handoff_note": null,
+          "reason": "The ticket is an unsolicited investment offer, which is considered spam.",
+          "tokens_in": 2339,
+          "tokens_out": 124,
+          "cost_usd": 0.00089164,
+          "latency_ms": 4428,
+          "error": null,
+          "match": {
+            "action": true,
+            "category": true,
+            "priority": true,
+            "language": true,
+            "faq": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "E09",
+      "expected": {
+        "action": "handoff",
+        "category": "other",
+        "priority": "P2",
+        "language": "nl",
+        "faq_ids": []
+      },
+      "runs": [
+        {
+          "run": 1,
+          "action": "handoff",
+          "category": "other",
+          "priority": "P2",
+          "language": "nl",
+          "confidence": 1.0,
+          "faq_ids": [],
+          "rule_hits": [
+            "gdpr_data_request"
+          ],
+          "policy_notes": [
+            "forced handoff (gdpr_data_request)"
+          ],
+          "language_source": "code",
+          "reason_language": null,
+          "name_removed": false,
+          "promise_phrase": null,
+          "verifier": null,
+          "language_issues": [],
+          "language_override": false,
+          "back_translation": null,
+          "draft_reply": null,
+          "handoff_note": "[forced handoff (gdpr_data_request)] The customer is requesting access to all personal data stored about them (GDPR/AVG).",
+          "reason": "This is a GDPR data request, which always requires human handling. Policy: forced handoff (gdpr_data_request).",
+          "tokens_in": 2349,
+          "tokens_out": 148,
+          "cost_usd": 0.0009048400000000001,
+          "latency_ms": 3685,
+          "error": null,
+          "match": {
+            "action": true,
+            "category": true,
+            "priority": true,
+            "language": true,
+            "faq": null
+          }
+        },
+        {
+          "run": 2,
+          "action": "handoff",
+          "category": "other",
+          "priority": "P2",
+          "language": "nl",
+          "confidence": 1.0,
+          "faq_ids": [],
+          "rule_hits": [
+            "gdpr_data_request"
+          ],
+          "policy_notes": [
+            "forced handoff (gdpr_data_request)"
+          ],
+          "language_source": "code",
+          "reason_language": null,
+          "name_removed": false,
+          "promise_phrase": null,
+          "verifier": null,
+          "language_issues": [],
+          "language_override": false,
+          "back_translation": null,
+          "draft_reply": null,
+          "handoff_note": "[forced handoff (gdpr_data_request)] The customer requests access to all personal data stored about them (GDPR/AVG).",
+          "reason": "This is a GDPR data request, which always requires human handling. Policy: forced handoff (gdpr_data_request).",
+          "tokens_in": 2349,
+          "tokens_out": 147,
+          "cost_usd": 0.00090444,
+          "latency_ms": 3661,
+          "error": null,
+          "match": {
+            "action": true,
+            "category": true,
+            "priority": true,
+            "language": true,
+            "faq": null
+          }
+        },
+        {
+          "run": 3,
+          "action": "handoff",
+          "category": "other",
+          "priority": "P2",
+          "language": "nl",
+          "confidence": 1.0,
+          "faq_ids": [],
+          "rule_hits": [
+            "gdpr_data_request"
+          ],
+          "policy_notes": [
+            "forced handoff (gdpr_data_request)"
+          ],
+          "language_source": "code",
+          "reason_language": null,
+          "name_removed": false,
+          "promise_phrase": null,
+          "verifier": null,
+          "language_issues": [],
+          "language_override": false,
+          "back_translation": null,
+          "draft_reply": null,
+          "handoff_note": "[forced handoff (gdpr_data_request)] The customer is requesting access to all personal data stored about them (GDPR/AVG).",
+          "reason": "This is a GDPR data request, which always requires human handling. Policy: forced handoff (gdpr_data_request).",
+          "tokens_in": 2349,
+          "tokens_out": 148,
+          "cost_usd": 0.0009048400000000001,
+          "latency_ms": 3730,
+          "error": null,
+          "match": {
+            "action": true,
+            "category": true,
+            "priority": true,
+            "language": true,
+            "faq": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "E10",
+      "expected": {
+        "action": "reply",
+        "category": "question",
+        "priority": "P4",
+        "language": "nl",
+        "faq_ids": [
+          "F11"
+        ]
+      },
+      "runs": [
+        {
+          "run": 1,
+          "action": "reply",
+          "category": "question",
+          "priority": "P4",
+          "language": "nl",
+          "confidence": 1.0,
+          "faq_ids": [
+            "F11"
+          ],
+          "rule_hits": [],
+          "policy_notes": [],
+          "language_source": "model",
+          "reason_language": null,
+          "name_removed": false,
+          "promise_phrase": null,
+          "verifier": "pass",
+          "language_issues": [],
+          "language_override": false,
+          "back_translation": "Hello, You can view the status page for information about current outages and planned maintenance: status.roosterly.nl. There you can see if there is maintenance planned for tonight. Kind regards, Team Roosterly",
+          "draft_reply": "Hallo,\n\nJe kunt de statuspagina bekijken voor informatie over huidige uitval en gepland onderhoud: status.roosterly.nl. Daar zie je of er vanavond onderhoud is gepland.\n\nMet vriendelijke groet,\nTeam Roosterly",
+          "handoff_note": null,
+          "reason": "The customer is asking about planned maintenance, which is a general inquiry.",
+          "tokens_in": 3036,
+          "tokens_out": 403,
+          "cost_usd": 0.0012541599999999998,
+          "latency_ms": 9438,
+          "error": null,
+          "match": {
+            "action": true,
+            "category": true,
+            "priority": true,
+            "language": true,
+            "faq": true
+          }
+        },
+        {
+          "run": 2,
+          "action": "reply",
+          "category": "question",
+          "priority": "P4",
+          "language": "nl",
+          "confidence": 1.0,
+          "faq_ids": [
+            "F11"
+          ],
+          "rule_hits": [],
+          "policy_notes": [],
+          "language_source": "model",
+          "reason_language": null,
+          "name_removed": false,
+          "promise_phrase": null,
+          "verifier": "pass",
+          "language_issues": [],
+          "language_override": false,
+          "back_translation": "Hello, You can view the status and planned maintenance actions on status.roosterly.nl. There you can see if there is maintenance planned for tonight. Kind regards, Team Roosterly",
+          "draft_reply": "Hallo,\n\nJe kunt de status en geplande onderhoudsacties bekijken op status.roosterly.nl. Daar zie je of er vanavond onderhoud is gepland.\n\nMet vriendelijke groet,\nTeam Roosterly",
+          "handoff_note": null,
+          "reason": "The customer is asking about planned maintenance, which is a general inquiry.",
+          "tokens_in": 3030,
+          "tokens_out": 357,
+          "cost_usd": 0.0012335999999999998,
+          "latency_ms": 8134,
+          "error": null,
+          "match": {
+            "action": true,
+            "category": true,
+            "priority": true,
+            "language": true,
+            "faq": true
+          }
+        },
+        {
+          "run": 3,
+          "action": "reply",
+          "category": "question",
+          "priority": "P4",
+          "language": "nl",
+          "confidence": 1.0,
+          "faq_ids": [
+            "F11"
+          ],
+          "rule_hits": [],
+          "policy_notes": [],
+          "language_source": "model",
+          "reason_language": null,
+          "name_removed": false,
+          "promise_phrase": null,
+          "verifier": "pass",
+          "language_issues": [],
+          "language_override": false,
+          "back_translation": "Hello, You can view the status and planned maintenance actions on status.roosterly.nl. There you can see if there is maintenance planned for tonight. Kind regards, Team Roosterly",
+          "draft_reply": "Hallo,\n\nJe kunt de status en geplande onderhoudsacties bekijken op status.roosterly.nl. Daar zie je of er vanavond onderhoud is gepland.\n\nMet vriendelijke groet,\nTeam Roosterly",
+          "handoff_note": null,
+          "reason": "The customer is asking about planned maintenance, which is a general inquiry.",
+          "tokens_in": 3030,
+          "tokens_out": 357,
+          "cost_usd": 0.0012335999999999998,
+          "latency_ms": 8006,
+          "error": null,
+          "match": {
+            "action": true,
+            "category": true,
+            "priority": true,
+            "language": true,
+            "faq": true
+          }
+        }
+      ]
+    }
+  ]
+}
