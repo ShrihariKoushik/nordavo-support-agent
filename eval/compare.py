@@ -1,6 +1,7 @@
 """Compare two eval runs: python -m eval.compare <before-tag> <after-tag>
 
-Writes eval/results/compare.md: field accuracy, safety counts and cost, before -> after.
+Writes eval/results/compare-<before>-<after>.md: field accuracy, safety counts and cost,
+before -> after. One file per pair, so every comparison stays linkable.
 """
 
 import argparse
@@ -121,7 +122,7 @@ def main(argv: list[str] | None = None) -> int:
         print(exc, file=sys.stderr)
         return 2
     markdown = render(before, after)
-    out = RESULTS_DIR / "compare.md"
+    out = RESULTS_DIR / f"compare-{args.before}-{args.after}.md"
     out.write_text(markdown, encoding="utf-8")
     print(markdown)
     print(f"Wrote {out}", file=sys.stderr)

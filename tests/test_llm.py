@@ -110,3 +110,23 @@ def test_no_provider_means_no_extra_body() -> None:
 
     assert "extra_body" not in fake.requests[0]
     assert fake.requests[0]["seed"] == 42  # default seed
+
+
+def test_provider_error_message_includes_the_status_code() -> None:
+    import httpx
+    from openai import RateLimitError
+
+    from agent.llm import LlmError
+
+    class Failing:
+        def __init__(self) -> None:
+            response = httpx.Response(429, request=httpx.Request("POST", "https://llm.test/v1/chat/completions"))
+            error = RateLimitError("rate limited", response=response, body=None)
+
+            def create(**_kwargs: Any) -> Any:
+                raise error
+
+            self.chat = SimpleNamespace(completions=SimpleNamespace(create=create))
+
+    with pytest.raises(LlmError, match=r"RateLimitError \(HTTP 429\)"):
+        LlmClient(SETTINGS, client=Failing()).complete_json("s", "u", Answer)

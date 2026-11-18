@@ -9,6 +9,7 @@ from agent.rules import (
     commitment_phrases,
     forced_handoff_hits,
     is_empty,
+    remove_invented_name,
     redact_payment_details,
 )
 
@@ -204,3 +205,39 @@ def test_ibans_are_redacted(iban: str) -> None:
 )
 def test_normal_numbers_are_left_alone(text: str) -> None:
     assert redact_payment_details(text) == text
+
+
+TICKET_WITHOUT_NAME = "Zou fijn zijn als de app een donkere modus had."
+
+
+@pytest.mark.parametrize(
+    ("draft", "language", "expected", "removed"),
+    [
+        ("Hoi Jan, ga naar Team.", "nl", "Hallo, ga naar Team.", "Jan"),
+        ("Hello Sarah! Go to Team.", "en", "Hello, Go to Team.", "Sarah"),
+        ("Guten Tag Herr Becker, danke.", "de", "Hallo, danke.", "Becker"),
+        ("Bedankt voor je suggestie, Jan! We lezen elk idee.", "nl", "Bedankt voor je suggestie! We lezen elk idee.", "Jan"),
+        ("Hallo, ga naar Team.", "nl", "Hallo, ga naar Team.", None),
+        ("Hallo team, dank!", "nl", "Hallo team, dank!", None),
+    ],
+)
+def test_invented_greeting_name_is_removed(draft: str, language: str, expected: str, removed: str | None) -> None:
+    assert remove_invented_name(draft, TICKET_WITHOUT_NAME, language) == (expected, removed)
+
+
+def test_greeting_name_from_the_ticket_is_kept() -> None:
+    ticket_text = """Goedemorgen, hoe voeg ik een medewerker toe?
+Groet, Anouk de Wit"""
+    draft = """Goedemorgen Anouk,
+
+Ga naar Team."""
+    assert remove_invented_name(draft, ticket_text, "nl") == (draft, None)
+    full = "Beste Anouk de Wit, ga naar Team."
+    assert remove_invented_name(full, ticket_text, "nl") == (full, None)
+
+
+def test_only_the_first_line_is_checked() -> None:
+    draft = """Hallo,
+
+Vraag het aan Jan, de manager."""
+    assert remove_invented_name(draft, TICKET_WITHOUT_NAME, "nl") == (draft, None)

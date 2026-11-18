@@ -96,7 +96,9 @@ class LlmClient:
                 **self._routing(model),
             )
         except OpenAIError as exc:
-            raise LlmError(f"LLM call failed: {type(exc).__name__}") from exc
+            status = getattr(exc, "status_code", None)
+            detail = f" (HTTP {status})" if status else ""
+            raise LlmError(f"LLM call failed: {type(exc).__name__}{detail}") from exc
         text = response.choices[0].message.content or ""
         usage = self._usage(response)
         self.total += usage

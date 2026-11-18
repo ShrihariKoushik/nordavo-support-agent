@@ -507,3 +507,49 @@ def test_dutch_reason_twice_is_kept_and_logged() -> None:
 
     assert result.decision.reason == DUTCH_REASON
     assert result.reason_language == "nl"
+
+
+# --- Names and grounding -----------------------------------------------------------------------
+
+
+def test_invented_greeting_name_is_replaced_before_verification() -> None:
+    llm = ScriptedLlm([proposal(draft_reply="Hoi Jan, ga naar Team → Medewerker toevoegen. Team Roosterly")], [verify_ok()])
+    result = decide(ticket(), faq=FAQ, llm=llm, settings=SETTINGS)
+
+    assert result.decision.action is Action.reply
+    assert result.decision.draft_reply == "Hallo, ga naar Team → Medewerker toevoegen. Team Roosterly"
+    assert result.name_removed is True
+    assert "greeting name not found in ticket, removed" in result.policy_notes
+    assert "Hoi Jan" not in llm.users[1][1]  # the checker sees the corrected draft
+
+
+def test_greeting_name_written_in_the_ticket_stays() -> None:
+    llm = ScriptedLlm([proposal(draft_reply="Hoi Marloes, ga naar Team → Medewerker toevoegen. Team Roosterly")], [verify_ok()])
+    named = ticket(body="Hoe voeg ik iemand toe aan het team? Groetjes, Marloes")
+    result = decide(named, faq=FAQ, llm=llm, settings=SETTINGS)
+
+    assert result.decision.draft_reply is not None
+    assert result.decision.draft_reply.startswith("Hoi Marloes,")
+    assert result.name_removed is False
+
+
+def test_commitment_claim_marked_unsupported_hands_off() -> None:
+    claims = [
+        {"claim": "Ideas go on the public roadmap", "supported": True, "faq_id": "F02"},
+        {"claim": "We have noted your idea", "supported": False, "faq_id": None},
+    ]
+    llm = ScriptedLlm([proposal()], [verify_ok(claims=claims)])
+    result = decide(ticket(), faq=FAQ, llm=llm, settings=SETTINGS)
+
+    assert result.decision.action is Action.handoff
+    assert "We have noted your idea" in (result.decision.handoff_note or "")
+    assert result.verifier is not None and result.verifier.unsupported == 1
+
+
+def test_verifier_prompt_rejects_implied_and_customer_specific_claims() -> None:
+    from agent.prompts import DECIDE_SYSTEM
+
+    assert "Plausible, implied" in VERIFY_SYSTEM
+    assert "we have noted your" in VERIFY_SYSTEM
+    assert "Never guess a name." in DECIDE_SYSTEM
+    assert "Do not describe actions taken for this customer" in DECIDE_SYSTEM

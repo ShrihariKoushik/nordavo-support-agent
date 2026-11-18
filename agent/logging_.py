@@ -52,6 +52,7 @@ class TicketLog(BaseModel):
     policy_notes: list[str] = Field(default_factory=list)
     language_source: str | None = None  # code | model | default
     reason_language: str | None = None  # detected language of `reason`; should be en
+    name_removed: bool = False  # code removed an invented greeting name from the reply
     verifier_verdict: str | None = None  # pass | fail | None when not a reply
     verifier_claims: int | None = None
     verifier_unsupported: int | None = None

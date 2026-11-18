@@ -23,6 +23,8 @@ class VerifyOutcome(BaseModel):
     failures: list[str] = Field(default_factory=list)
     claims: int = 0
     unsupported: int = 0
+    # Each claim as "supported|unsupported [F..] text", for the dry-run preview.
+    claim_lines: list[str] = Field(default_factory=list)
     language_issues: list[str] = Field(default_factory=list)
     back_translation: str | None = None
     usage: Usage = Field(default_factory=Usage)
@@ -77,6 +79,11 @@ def verify_reply(
         failures=failures,
         claims=len(result.claims),
         unsupported=unsupported,
+        claim_lines=[
+            f"{'supported' if _grounded(c.supported, c.faq_id, cited_ids) else 'UNSUPPORTED'}"
+            f" [{c.faq_id or '-'}] {c.claim}"
+            for c in result.claims
+        ],
         language_issues=result.language_issues,
         back_translation=result.back_translation,
         usage=usage,

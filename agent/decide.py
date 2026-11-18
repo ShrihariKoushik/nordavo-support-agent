@@ -27,6 +27,7 @@ from agent.rules import (
     forced_handoff_hits,
     is_empty,
     redact_payment_details,
+    remove_invented_name,
 )
 from agent.verify import VerifyOutcome, verify_reply
 
@@ -40,6 +41,8 @@ class DecisionResult(BaseModel):
     language_source: str = "model"
     # Detected language of the model's reason (should be "en"; None when too short to tell).
     reason_language: str | None = None
+    # True when code removed a greeting name that does not appear in the ticket.
+    name_removed: bool = False
     verifier: VerifyOutcome | None = None  # None when the decision was not a reply
     tokens_in: int = 0
     tokens_out: int = 0
@@ -132,7 +135,18 @@ def _decide(ticket: Ticket, *, faq: Faq, llm: JsonLlm, settings: Settings) -> De
         confidence=proposal.confidence,
     )
 
-    # e) Only replies reach a customer, so only replies are checked.
+    # e) Never greet a customer by a name they did not give us.
+    name_removed = False
+    if decision.action is Action.reply and decision.draft_reply:
+        fixed, removed = remove_invented_name(
+            decision.draft_reply, f"{ticket.subject}\n{ticket.body}", decision.language.value
+        )
+        if removed:
+            name_removed = True
+            notes.append("greeting name not found in ticket, removed")
+            decision = decision.model_copy(update={"draft_reply": fixed})
+
+    # f) Only replies reach a customer, so only replies are checked.
     verified: VerifyOutcome | None = None
     if decision.action is Action.reply:
         cited = [entry for entry in faq.entries if entry.id in proposal.faq_ids]
@@ -172,6 +186,7 @@ def _decide(ticket: Ticket, *, faq: Faq, llm: JsonLlm, settings: Settings) -> De
         policy_notes=notes,
         language_source="code" if code_language else "model",
         reason_language=reason_language,
+        name_removed=name_removed,
         verifier=verified,
         tokens_in=usage.tokens_in,
         tokens_out=usage.tokens_out,

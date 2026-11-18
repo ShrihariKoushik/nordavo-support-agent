@@ -221,6 +221,58 @@ def commitment_phrases(text: str) -> list[str]:
     return [match.group() for match in _COMMITMENT_RE.finditer(text)]
 
 
+# --- Names in a reply's greeting -------------------------------------------------------------
+
+NEUTRAL_GREETING = {"nl": "Hallo,", "en": "Hello,", "de": "Hallo,"}
+
+_NAME = r"[A-ZÀ-Þ][\w'-]*(?:\s+(?:van|de|der|den|von|ter|te|du|la)){0,2}(?:\s+[A-ZÀ-Þ][\w'-]*)?"
+# "Hoi Jan," / "Goedemorgen Anouk!" / "Dear Mr Smith," / "Sehr geehrte Frau Becker,"
+_GREETING_NAME_RE = re.compile(
+    r"^(?P<greet>\s*(?i:hoi|hallo|hey|hi|hello|dear|beste|geachte|goedemorgen|goedemiddag|"
+    r"goedenavond|guten\s+(?:tag|morgen|abend)|liebe[rs]?|sehr\s+geehrte[rs]?)"
+    r"(?:\s+(?i:heer|mevrouw|meneer|mr\.?|mrs\.?|ms\.?|frau|herr))?)"
+    rf"\s+(?P<name>{_NAME})(?P<end>\s*[,!.:]?)"
+)
+# "Bedankt voor je suggestie, Jan!" in the first line, when there is no greeting.
+_VOCATIVE_NAME_RE = re.compile(r",\s*(?P<name>[A-ZÀ-Þ][\w'-]+)(?=\s*[!.,])")
+# Words a greeting can address that are not a person's name.
+_NOT_A_NAME = {"team", "roosterly", "sie", "allemaal", "iedereen", "there", "all", "everyone", "support"}
+_PARTICLES = {"van", "de", "der", "den", "von", "ter", "te", "du", "la"}
+
+
+def remove_invented_name(draft: str, ticket_text: str, language: str) -> tuple[str, str | None]:
+    """Drop a name from the reply's opening if that name is not in the ticket.
+
+    Returns the (possibly changed) draft and the removed name, or None if nothing changed.
+    Only the first line is checked; a name the customer wrote themselves is kept.
+    """
+    ticket_words = {word.lower() for word in _WORD_RE.findall(ticket_text)}
+    first_line, newline, rest = draft.partition("\n")
+
+    match = _GREETING_NAME_RE.match(first_line)
+    if match:
+        name = match.group("name")
+        if _name_in_ticket(name, ticket_words):
+            return draft, None
+        neutral = NEUTRAL_GREETING.get(language, "Hello,")
+        tail = first_line[match.end():].lstrip(" ,!.:")
+        new_first = f"{neutral} {tail}" if tail else neutral
+        return new_first + newline + rest, name
+
+    vocative = _VOCATIVE_NAME_RE.search(first_line)
+    if vocative and not _name_in_ticket(vocative.group("name"), ticket_words):
+        new_first = first_line[: vocative.start()] + first_line[vocative.end("name"):]
+        return new_first + newline + rest, vocative.group("name")
+    return draft, None
+
+
+def _name_in_ticket(name: str, ticket_words: set[str]) -> bool:
+    tokens = [token.lower() for token in name.split() if token.lower() not in _PARTICLES]
+    if not tokens or all(token in _NOT_A_NAME for token in tokens):
+        return True  # "Hallo team," is not a name; leave it alone
+    return all(token.strip("'-.") in ticket_words for token in tokens)
+
+
 # --- Empty tickets ---------------------------------------------------------------------------
 
 _GREETINGS = [

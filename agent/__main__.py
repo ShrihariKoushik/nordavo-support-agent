@@ -146,6 +146,7 @@ def _log_entry(
         policy_notes=result.policy_notes,
         language_source=result.language_source,
         reason_language=result.reason_language,
+        name_removed=result.name_removed,
         tokens_in=result.tokens_in,
         tokens_out=result.tokens_out,
         cost_usd=result.cost_usd,
@@ -170,6 +171,8 @@ def _print_preview(result: DecisionResult) -> None:
         print(
             f"    verifier: {verdict}, claims={verifier.claims}, unsupported={verifier.unsupported}"
         )
+        for line in verifier.claim_lines:
+            print(f"      claim: {line}")
         for failure in verifier.failures:
             print(f"      fail: {failure}")
         for issue in verifier.language_issues:

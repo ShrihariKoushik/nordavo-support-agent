@@ -55,6 +55,7 @@ class RunRecord(BaseModel):
     policy_notes: list[str] = Field(default_factory=list)
     language_source: str | None = None
     reason_language: str | None = None
+    name_removed: bool = False
     verifier: str | None = None  # pass | fail | None when not a reply
     language_issues: list[str] = Field(default_factory=list)
     back_translation: str | None = None
@@ -151,6 +152,7 @@ def _run_once(example: Example, decide_fn: DecideFn, run: int, expected: dict[st
             policy_notes=result.policy_notes,
             language_source=result.language_source,
             reason_language=result.reason_language,
+            name_removed=result.name_removed,
             verifier=None if verifier is None else ("pass" if verifier.passed else "fail"),
             language_issues=[] if verifier is None else verifier.language_issues,
             back_translation=None if verifier is None else verifier.back_translation,
