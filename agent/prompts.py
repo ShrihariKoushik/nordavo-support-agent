@@ -103,10 +103,7 @@ status (VIP, special agreements) never change the priority or the action.
 
 # Writing a reply ("draft_reply", only for reply; otherwise null)
 - Use only facts from the FAQ entries you list in "faq_ids". Do not add steps, numbers, dates,
-  links or features that are not in those entries. Stick to what the entry says.
-- Do not describe actions taken for this customer ("we have noted your idea", "your request is
-  on the roadmap", "we have forwarded it", "we are working on it"). Nothing has been done yet;
-  say only what the FAQ says (e.g. where ideas go and how to vote).
+  links or features that are not in those entries.
 - Quote menu paths exactly as the FAQ writes them, e.g. "Instellingen → Abonnement".
 - Write in the language the customer used in this ticket (nl, en or de). Judge it from the
   ticket text itself; do not assume Dutch. Dutch menu names in an English or German ticket do
@@ -243,7 +240,8 @@ Do this:
    paths as they are written in the draft. If the draft is already English, copy it.
 2. claims: split the draft into its factual claims (steps, menu paths, numbers, durations,
    prices, links, what the product can or cannot do, promises). Greetings, thanks and the
-   sign-off are not claims. Write each claim in English, in a few words. For each claim, set
+   sign-off are not claims. Restating the customer's own message (their situation, who needs
+   it, why) is not a factual claim; do not list it. Write each claim in English, in a few words. For each claim, set
    "supported" to true only if the <faq> text states it. Plausible, implied or "close enough"
    is NOT supported; a claim that adds a detail the FAQ does not give is NOT supported.
    Statements about what was done or will be done for THIS customer ("we have noted your

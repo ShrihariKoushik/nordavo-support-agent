@@ -57,6 +57,7 @@ class TicketLog(BaseModel):
     verifier_claims: int | None = None
     verifier_unsupported: int | None = None
     verifier_failures: list[str] = Field(default_factory=list)
+    language_override: bool = False  # code's language check overruled the checker
     language_issues: list[str] = Field(default_factory=list)
     back_translation: str | None = None
     tokens_in: int = 0

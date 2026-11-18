@@ -128,6 +128,7 @@ def _log_entry(
             "verifier_claims": verifier.claims,
             "verifier_unsupported": verifier.unsupported,
             "verifier_failures": verifier.failures,
+            "language_override": verifier.language_override,
             "language_issues": verifier.language_issues,
             "back_translation": verifier.back_translation,
         }

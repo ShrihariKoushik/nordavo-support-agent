@@ -552,4 +552,45 @@ def test_verifier_prompt_rejects_implied_and_customer_specific_claims() -> None:
     assert "Plausible, implied" in VERIFY_SYSTEM
     assert "we have noted your" in VERIFY_SYSTEM
     assert "Never guess a name." in DECIDE_SYSTEM
-    assert "Do not describe actions taken for this customer" in DECIDE_SYSTEM
+    # Grounding is enforced by the verifier only; the drafting prompt stays as before.
+    assert "Do not describe actions taken for this customer" not in DECIDE_SYSTEM
+    assert "Restating the customer's own message" in VERIFY_SYSTEM
+
+
+# --- Code overrules the checker on language ----------------------------------------------------
+
+CLEARLY_DUTCH_DRAFT = (
+    "Hallo! Je kunt een nieuwe medewerker toevoegen via het menu Team, dat is heel makkelijk. "
+    "Groet, Team Roosterly"
+)
+
+
+def test_code_overrules_checker_when_ticket_and_draft_are_both_clearly_dutch() -> None:
+    llm = ScriptedLlm(
+        [proposal(draft_reply=CLEARLY_DUTCH_DRAFT)], [verify_ok(language_matches_ticket=False)]
+    )
+    result = decide(ticket(), faq=FAQ, llm=llm, settings=SETTINGS)
+
+    assert result.decision.action is Action.reply
+    assert result.verifier is not None
+    assert result.verifier.passed and result.verifier.language_override is True
+
+
+def test_checker_language_fail_stands_when_code_is_not_confident_about_the_draft() -> None:
+    short_draft = "Hoi! Ga naar Team → Medewerker toevoegen. Team Roosterly"  # too few marker words
+    llm = ScriptedLlm([proposal(draft_reply=short_draft)], [verify_ok(language_matches_ticket=False)])
+    result = decide(ticket(), faq=FAQ, llm=llm, settings=SETTINGS)
+
+    assert result.decision.action is Action.handoff
+    assert result.verifier is not None and result.verifier.language_override is False
+    assert "reply language does not match the ticket" in (result.decision.handoff_note or "")
+
+
+def test_code_detected_mismatch_still_fails_even_if_checker_says_match() -> None:
+    llm = ScriptedLlm([proposal(draft_reply=CLEARLY_DUTCH_DRAFT)], [verify_ok(language_matches_ticket=True)])
+    english = ticket("New employee", "How do I add a new employee to our team? I can not find it in the app.")
+    result = decide(english, faq=FAQ, llm=llm, settings=SETTINGS)
+
+    assert result.decision.action is Action.handoff
+    assert "reply is in nl, ticket is in en" in (result.decision.handoff_note or "")
+    assert result.verifier is not None and result.verifier.language_override is False

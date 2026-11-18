@@ -23,6 +23,8 @@ class VerifyOutcome(BaseModel):
     failures: list[str] = Field(default_factory=list)
     claims: int = 0
     unsupported: int = 0
+    # True when code's language detection overruled the checker's "language does not match".
+    language_override: bool = False
     # Each claim as "supported|unsupported [F..] text", for the dry-run preview.
     claim_lines: list[str] = Field(default_factory=list)
     language_issues: list[str] = Field(default_factory=list)
@@ -64,11 +66,15 @@ def verify_reply(
         )
 
     cited_ids = {entry.id for entry in cited_faq_entries}
-    failures = verification_failures(result, cited_ids)
+    # Language: when code is confident about both ticket and draft, code decides, not the checker.
+    draft_language = detect_language(draft)
+    code_says_match = bool(
+        expected_language and draft_language and draft_language[0] is expected_language
+    )
+    failures = verification_failures(result, cited_ids, language_confirmed=code_says_match)
+    language_override = code_says_match and not result.language_matches_ticket
     if not _is_english(result.back_translation):
         failures.append("back-translation not in English")
-    # Code check on top of the checker: a clearly-detected draft language must match the ticket.
-    draft_language = detect_language(draft)
     if expected_language and draft_language and draft_language[0] is not expected_language:
         failures.append(
             f"reply is in {draft_language[0].value}, ticket is in {expected_language.value}"
@@ -79,6 +85,7 @@ def verify_reply(
         failures=failures,
         claims=len(result.claims),
         unsupported=unsupported,
+        language_override=language_override,
         claim_lines=[
             f"{'supported' if _grounded(c.supported, c.faq_id, cited_ids) else 'UNSUPPORTED'}"
             f" [{c.faq_id or '-'}] {c.claim}"
@@ -90,15 +97,21 @@ def verify_reply(
     )
 
 
-def verification_failures(result: VerifyResult, cited_ids: set[str]) -> list[str]:
-    """Reasons to block the reply. Language issues alone are logged, not blocking."""
+def verification_failures(
+    result: VerifyResult, cited_ids: set[str], *, language_confirmed: bool = False
+) -> list[str]:
+    """Reasons to block the reply. Language issues alone are logged, not blocking.
+
+    `language_confirmed`: code detected the same language for ticket and draft, so the
+    checker's language_matches_ticket=false is overruled.
+    """
     failures: list[str] = []
     bad = [c.claim for c in result.claims if not _grounded(c.supported, c.faq_id, cited_ids)]
     if bad:
         failures.append(f"{len(bad)} claim(s) not supported by the cited FAQ: " + " | ".join(bad))
     if not result.claims:
         failures.append("checker found no claims to ground in the FAQ")
-    if not result.language_matches_ticket:
+    if not result.language_matches_ticket and not language_confirmed:
         failures.append("reply language does not match the ticket")
     if not result.answers_the_question:
         failures.append("reply does not answer the customer's question")

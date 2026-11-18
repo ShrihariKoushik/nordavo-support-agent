@@ -58,6 +58,7 @@ class RunRecord(BaseModel):
     name_removed: bool = False
     verifier: str | None = None  # pass | fail | None when not a reply
     language_issues: list[str] = Field(default_factory=list)
+    language_override: bool = False
     back_translation: str | None = None
     draft_reply: str | None = None
     handoff_note: str | None = None
@@ -155,6 +156,7 @@ def _run_once(example: Example, decide_fn: DecideFn, run: int, expected: dict[st
             name_removed=result.name_removed,
             verifier=None if verifier is None else ("pass" if verifier.passed else "fail"),
             language_issues=[] if verifier is None else verifier.language_issues,
+            language_override=False if verifier is None else verifier.language_override,
             back_translation=None if verifier is None else verifier.back_translation,
             draft_reply=decision.draft_reply,
             handoff_note=decision.handoff_note,
